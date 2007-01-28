@@ -1,0 +1,71 @@
+#!/bin/bash
+set -e
+
+. /usr/local/share/hbackup.sh
+
+sftpserver=/usr/local/bin/bodged-sftp-server
+userhost=rbackup@sfere
+volume=/usb
+
+setup
+
+echo "--- Saving /Users"
+setstatus \
+nhbackup --repo $volume \
+        --sftp $userhost \
+        --sftp-server $sftpserver \
+	--index $today/users \
+	--root /Users \
+	--exclude '/.Trash$' \
+	--exclude '/.thumbnails' \
+	--exclude '/.xvpics$' \
+	--exclude '/.arch-revision-library$' \
+	--exclude '/++pristine-trees$' \
+	--exclude '/Library/Caches$' \
+	--exclude '/.mozilla/.*/Cache$' \
+	--exclude '/.kde/share/cache$' \
+	--exclude '/.ccache$' \
+	--one-file-system \
+	--verbose \
+	--backup 
+echo
+
+echo "--- Saving /local"
+setstatus \
+nhbackup --repo $volume \
+        --sftp $userhost \
+        --sftp-server $sftpserver \
+	--index $today/local \
+	--root /local \
+	--verbose \
+	--backup 
+echo
+
+echo "--- Saving /etc"
+setstatus \
+nhbackup --repo $volume \
+        --sftp $userhost \
+        --sftp-server $sftpserver \
+	--index $today/etc \
+	--root /etc \
+	--verbose \
+	--backup 
+echo
+
+
+echo "--- Saving /sw"
+setstatus \
+nhbackup --repo $volume \
+        --sftp $userhost \
+        --sftp-server $sftpserver \
+	--index $today/sw \
+	--root /sw \
+	--verbose \
+	--backup 
+echo
+
+echo "--- Done"
+
+exit $status
+
+# arch-tag:q0alKvWrVG3SlWCMKrw7SQ

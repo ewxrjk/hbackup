@@ -1,0 +1,13 @@
+- extended attributes for various platforms
+- progress indicators
+  + when backing up generate file list with sizes in background so we
+    can estimate how far through we are
+  + when restoring and verifying we can do something similar
+- decide whether we can do anything useful with FIFOs and sockets
+- remember mapping of root+name+mtime -> hash somewhere for much
+  faster, but slightly lower assurance, backup
+- record filename encoding [from locale] in index files and auto
+  convert on restore
+- incrementals, i.e. only back up files after a certain date; and
+  restore of same
+# arch-tag:ihNXK57dXBJhBlKSzrq6nw

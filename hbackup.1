@@ -1,0 +1,449 @@
+.\" This file is part of hbackup.
+.\" Copyright (C) 2006, 2007 Richard Kettlewell
+.\"
+.\" This program is free software; you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation; either version 2 of the License, or
+.\" (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful, but
+.\" WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+.\" General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program; if not, write to the Free Software
+.\" Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+.\" USA
+.\"
+.TH hbackup 1
+.SH NAME
+hbackup, nhbackup - back up one filesystem using another
+.SH SYNOPSIS
+.BR hbackup | nhbackup
+.BR --backup | --restore | --verify
+.I OPTIONS
+.br
+.B hbackup
+.B --cleanup
+.I OPTIONS
+.IR FILENAME ...
+.SH DESCRIPTION
+.B hbackup
+backs up a collection of files onto a hard disk, or restores them.
+.PP
+The format used does not rely on the target volume supporting UNIX
+permissions, etc, and efficiently stores multiple backups that contain
+identical files (for example, repeated backups of the same computer,
+or backups of different computers that have some files in common).
+.PP
+.B hbackup
+is the Python version and
+.B nhbackup
+is the C++ version.  The former depends on a Python interpreter, the
+latter on C++ runtime libraries.  You might want to put at least one
+of these on your backup medium (according to whichever dependency is
+more convenient to satisfy).
+.SH OPTIONS
+.SS "Mode Options"
+Exactly one mode option must always be specified.
+.TP
+.B --backup
+Copy files below the root directory into the repository and write an
+index file for them.
+.TP
+.B --restore
+Copy the files listed in the index file from the repository to the
+proper location below the root.
+.TP
+.B --verify
+Scan the index and checking that the files listed are in the
+repository.  This option is used to verify the integrity of a backup.
+.TP
+.B --cleanup
+Remove obsolete files.  In this case you should list all the index
+files that are not yet obsolete; any files not referred to by any of
+them will be listed to standard output.
+.IP
+This cannot be used in combination with \fB--sftp\fR.
+.SS Parameters
+.TP
+.B --repo \fIDIRECTORY
+Identifies the repository directory.  Backed up files will be stored
+in subdirectories of this directory, or restored from it.  Mandatory.
+.TP
+.B --index \fIFILENAME
+Identifies the index file.  When backing up a new index file is
+written.  When restoring or verifying an existing one is read.  Mandatory for
+.BR --backup ,
+.B --restore
+and
+.BR --verify .
+.TP
+.B --root \fIDIRECTORY
+Identifies the root of the files to back up, or where to restore to.
+Files are stored with the root stripped off so they may be restored to
+a different location.
+.SS "Other Options"
+.TP
+.B --one-file-system
+Do not cross file-system boundaries below the root.
+.TP
+.B --preserve-atime
+Restore the atime, i.e. the last read time, of each file.
+.TP
+.B --exclude \fIPATTERN
+Exclude filenames matching \fIPATTERN\fR, which should be a filename
+glob pattern matching the whole path below the root, from the backup.
+.IP
+For
+.B hbackup
+the patterns are simple glob patterns.  For
+.B nhbackup
+they are Perl-compatible regexps.  Either way quoting is normally
+required to portect regexp metacharacters from the shell.
+.IP
+For instance if the root is \fB/home\fR and the pattern is
+\fB*/cache\fR then any file or directory called \fBcache\fR will be
+excluded from the backup.
+.IP
+Restores and verifies are not affected.
+.TP
+.B --overwrite
+Overwrite index files rather.
+.TP
+.B --sftp \fR[\fIUSER\fB@\fR]\fIHOST
+.RB ( hbackup
+only).
+.IP
+Access the repository (and index file) by sftp to \fIUSER\fB@\fIHOST\fR.
+See \fBSFTP\fR below.
+.TP
+.B --no-rename
+.RB ( hbackup
+only).
+.IP
+Normally files in the repository are written out to a temporary file
+and then renamed into place.  With this option they are always written
+in place.  This reduces reliability but is necessary to work around
+design flaws in SFTP which prevent this working.
+.IP
+If you use this option and a backup is interrupted then you should
+re-run the backup and immediately do a \fB--verify\fR when it
+completes, to check that no bad files have been left in the
+repository.
+.TP
+.B --sftp-server \fIPATH\fR
+.RB ( nhbackup
+only).
+.IP
+Specify an alternative path to the SFTP server.  This is used with a
+patched SFTP server that works around the problem described above
+under \fB--no-rename\fR.
+.IP
+See http://bugs.debian.org/352589 for more information.
+.TP
+.B --delete
+.RB ( nhbackup
+only).
+.IP
+Delete obsolete files if used with 
+.BR --cleanup .
+.TP
+.B --detect-bogus
+.RB ( nhbackup
+only).
+.IP
+With
+.BR --cleanup ,
+check the hash of every file in the repo and list (or delete, with
+.BR --delete )
+any that are wrong.
+.IP
+With
+.BR --verify ,
+check the hash of each file in the repo required by the index and
+delete any that are wrong.
+.TP
+.B --no-permissions
+.RB ( nhbackup
+only).
+.IP
+Don't set mode and ownership of restored files.  Used when restoring
+for content rather than to exactly restore a system.  Timestamps are
+still restored.
+.TP
+.B --from-encoding \fIENCODING \fB--to-encoding \fIENCODING
+.RB ( nhbackup
+only).
+.IP
+Convert filename encoding when restoring.  Used when restoring to a
+system with a different filename encoding.
+.IP
+If a character cannot be converted, or if it is corrupted, then it
+will be replaced with one or more question marks.
+.TP
+.B --help
+Display a usage message.
+.SH EXAMPLES
+All these examples assume that the user wants to back up \fB/home\fR
+onto a disk mounted on \fB/usb\fR.  The disk is shared with other
+computers.
+.PP
+Each day is given a separate directory and each host a separate
+directory within that.  So index files are
+\fB/usb/\fIDATE\fB/\fIHOST\fB/\fIFS\fR.
+.SS "Backing Up"
+.PP
+.nf
+index=/usb/indexes/$(date +%F)/$(uname -n)/home
+mkdir -p $index
+hbackup --repo /usb --index $index --root /home --backup
+.fi
+.PP
+If the index file already exists the backup will fail.  Although this
+is convenient in some cases in others it is not what you want; if so,
+use
+.BR --overwrite .
+.SS "Verifying"
+To verify all that all index files can still be restored:
+.PP
+.nf
+for index in /usb/index/*/*/*; do
+  hbackup --repo /usb --index $index --verify
+done
+.fi
+.PP
+This can be used to test even indexes written on other computers, so
+it makes sense to use the host able to fastest read the backup medium
+to perform this operation.  (It will do a lot of hashing, too, but I/O
+is likely to dominate unless you have a very slow CPU.)
+.PP
+.B nhbackup
+can additionally delete any files required by the given index which
+are incorrect, using the
+.B --detect-bogus
+option.  The index remains unrecoverable, but future backups will not
+be broken by bad repo files.
+.SS "Restoring"
+To restore January the 31st's backup to a temporary directory:
+.PP
+.nf
+index=/usb/indexes/2006-01-31/$(uname -n)/home
+mkdir -p /restore/home
+hbackup --repo /usb --index index --root /restore/home --restore
+.fi
+.PP
+See below regarding cross-system and cross-platform restores.
+.SS "Cleaning Up"
+.B hbackup
+does not deal with deleting old index files itself.  You will have to
+make your own arrangements for that.  However having done so, to
+delete all files in the repository not referenced by any current
+index:
+.PP
+.nf
+hbackup --repo /usb --cleanup /usb/indexes/*/*/* | xargs rm
+.fi
+.PP
+You may wish to manually inspect the list, rather than deleting the
+files immediately.  For instance, you could grep for the hash part of
+the filenames in the index files, or (in the absence of privacy
+concerns) inspect the contents of the files listed.
+.PP
+.B nhbackup
+has a
+.B --delete
+option allowing the above example to be written:
+.PP
+.nf
+nhbackup --repo /usb --delete --cleanup /usb/indexes/*/*/*
+.fi
+.PP
+In addition you could add the
+.B --detect-bogus
+option to check the hash of every file in the repo.  (This is unlikely
+to be quick.)
+.SH "CROSS-SYSTEM RESTORES"
+It is possible to restore onto a different system or even platform to
+the one that a backup was taken on, though there are a number of
+issues that can arise.
+.SS Permissions
+If the target system does not have the same user and group names as
+are encoded in the backup then the resore may fail.  You can use the
+.B --no-permissions
+option to avoid setting permissions (users, groups and access bits)
+for this case.
+.PP
+(Users and groups are stored by name if possible, so if the target
+system has the same names but different numbers the results should
+still make sense.  You might nonetheless want to suppress permission
+restore in some cases.)
+.SS "Filename Encoding"
+The target system may have a different filename encoding to that used
+in the backup.  The
+.B --from-encoding
+and
+.B --to-encoding
+options can be used to translate filenames.
+.PP
+For example a Windows system may have filenames encoded in CP1252, but
+if you restore onto a Mac (which insists on UTF-8) you will get errors
+as the kernel will reject the invalid filenames.  In this case you
+would use the following options to translate the filenames:
+.PP
+.nf
+.B --from-encoding CP1252 --to-encoding char
+.fi
+.PP
+Currently index files do not contain any encoding information, so you
+just have to know, but this may be changed in the future, allowing
+this operation to be automated.
+.SS "Case Independent Filesystems"
+If the target system has case-independent filenames, and the backup
+contains filenames that differ only in case, then later files will
+overwrite earlier ones.  There is currently no guard against this
+happening, with the exception that if a directory exists when it is
+restored it will not be created again; a warning message will be
+displayed.  (The contents are still restored as normal.)
+.SS "Device Files"
+Restoring device files onto a different platform from their original
+one is unlikely to produce useful results.
+.SH "FILE NAMING"
+Currently the only name reserved within the top level of the
+repository director is 'sha1'.  Files below this directory are stored
+according to their SHA1 hash.  However other names may be used in
+future.
+.PP
+The name 'indexes' will never be used directly, so you can always
+safely use this to store index files in.
+.PP
+It is suggested that index filenames include at least the date, the
+host being backed up, and the name of the filesystem (or fragment
+thereof) being backed up.  This allows the maximum sharing of a single
+volume.
+.SH "FILE FORMAT"
+The index file has one line per file (including directories).  The
+line is a URL-encoded list of key-value pairs.  The following keys are
+defined:
+.TP
+.B atime
+The last read time of the file.
+.TP
+.B ctime
+The last inode change time of the file.
+.TP
+.B gid
+The name of the group that owns the file (or the decimal GID if the
+name could not be determined).
+.TP
+.B inode
+The inode number of the file.  Only saved if the file has more than
+one (hard) link.  (The inode number itself is not restored, it is just
+used to match the different links up with one another.)
+.TP
+.B mtime
+The last contents change time of the file.
+.TP
+.B name
+The filename, relative to the root (and not including an initial
+\fB./\fR).
+.IP
+If the filename starts
+.B ./
+then it is taken to be in whatever directory the previous file was.
+This is a simple form of filename compression.
+.TP
+.B perms
+An octal integer giving the permissions (the bottom 12 bits).
+.TP
+.B rdev
+The device type, for a \fBchr\fR and \fBblk\fR only, as a decimal integer.
+.TP
+.B data
+The contents of the file, for small files.  Small files currently
+means anything up to 256 bytes.
+.TP
+.B sha1
+The SHA1 hash of the file, in hex.
+.TP
+.B target
+The target of a symbolic link, for \fBlink\fR only.
+.TP
+.B type
+The file type.  If absent then implicitly a regular file.  The
+following are valid file types:
+.RS
+.TP
+.B blk
+Block device.
+.TP
+.B chr
+Character device.
+.TP
+.B dir
+Directory.
+.TP
+.B link
+Symbolic link.
+.TP
+.B socket
+Socket.
+.RE
+.TP
+.B uid
+The name of the user that owns the file (or the decimal UID if the
+name could not be determined).
+.PP
+Octal integers always have a leading \fB0\fR.  Decimal integers never
+do (unless of course they are 0).  Times are decimal integers
+(currently; this means that sub-second times are corrupted, so they
+may be extexnded to support a fractional part in the future).
+.SH SFTP
+.B nhbackup
+and
+.B hbackup
+can access the repository either via the local filesystem or via SFTP.
+The requirements for SFTP to work are:
+.TP
+.B 1
+You have an SSH client that supports the \fB-s\fR option to access the
+remote SFTP server.  \fBhbackup\fR/\fBnhbackup\fR implement the SFTP
+protocol itself rather than using a local client, but they do not
+implement the
+encapsulating SSH protocol.
+.TP
+.B 2
+The remote SFTP server must implement the SFTP protocol version 3, as
+documented in http://www.openssh.com/draft-ietf-secsh-filexfer-02.txt.
+.PP
+OpenSSH satisfies these requirements.
+.SH NOTES
+Inode change times ('ctime') are not restored, though they are
+recorded in the index file.
+.PP
+Sub-second file times are coerced to the previous second.  This may be
+changed in a future version.
+.PP
+.B hbackup
+does not reliably restore directory modification times ('mtime') since
+it restores files within a directory after setting them.
+.B nhbackup
+sets directory modification times only at the end of the restore.
+.PP
+.B hbackup
+will not back up or restore sockets.  (In practice since binding them
+creates them this is not a great practical problem.)
+.SH "ACTUAL USE"
+I used to use the Python version of this program,
+.BR hbackup ,
+for backing up three Linux systems and a Mac OS X system onto external
+hard disks.  I've done three successful restores so far.
+.PP
+.B nhbackup
+has been used in the same environment for several months and has been
+used for successful restores, though does not have as many to its name
+yet.  New development tends to happen in this version.
+.SH AUTHOR
+Richard Kettlewell <rjk@greenend.org.uk>
+.\" arch-tag:u0QYSl7WZXLk7ngjV5bknQ

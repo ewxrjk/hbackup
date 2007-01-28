@@ -1,0 +1,30 @@
+#! /bin/bash
+set -e
+
+. /usr/local/share/hbackup.sh
+
+userhost=rbackup@sfere
+volume=/usb
+setup
+
+echo "--- Saving /"
+setstatus \
+hbackup --sftp $userhost \
+        --repo $volume \
+        --index $today/root \
+        --root / \
+        --one-file-system \
+        --verbose \
+        --exclude var/tmp/* \
+        --exclude var/run/* \
+        --exclude var/log/* \
+        --exclude var/cache/* \
+        --no-rename \
+        --backup
+echo
+
+echo "--- Done"
+
+exit $status
+
+# arch-tag:WiZtEpI5ymWVGM3fOVWjUg

@@ -1,0 +1,995 @@
+#! /usr/bin/env python
+#
+# This file is part of hbackup.
+# Copyright (C) 2006 Richard Kettlewell
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+# USA
+#
+
+import sys,os,os.path,sha
+from stat import *
+from pwd import *
+from grp import *
+from fnmatch import fnmatch
+from urllib import urlencode
+from cgi import parse_qs
+from popen2 import popen2
+from string import join
+import time
+
+# defaults --------------------------------------------------------------------
+
+cross_mounts = True
+exclude = []
+repo = None
+verbose = False
+root = None
+mode = None
+preserve_atime = False
+index = None
+overwrite_indexes = False
+fs = None
+lfs = None
+userhost = None
+rename_files = True
+
+# generic filesystem access ---------------------------------------------------
+
+class fsbase:
+    def makedirs(self, path):
+        if not self.isdir(path):
+            bits = ""
+            for bit in path.split('/')[1:]:
+                bits += "/" + bit
+                if not self.isdir(bits):
+                    self.mkdir(bits)
+
+# local filesystem access -----------------------------------------------------
+
+class localfs(fsbase):
+    """Filesystem access"""
+    def open(self, path, mode): return open(path, mode)
+    def remove(self, path): os.remove(path)
+    def rename(self, old, new): os.rename(old, new)
+    def mkdir(self, path): os.mkdir(path)
+    def rmdir(self, path): os.rmdir(path)
+    def isfile(self, path): return os.path.isfile(path)
+    def isdir(self, path): return os.path.isdir(path)
+    def listdir(self, path): return os.listdir(path)
+
+# sftp filesystem access ------------------------------------------------------
+
+def pack_byte(n):
+    return chr(n & 0xFF)
+
+def pack_uint32(n):
+    return (pack_byte(n >> 24)
+            + pack_byte(n >> 16)
+            + pack_byte(n >> 8)
+            + pack_byte(n))
+
+def pack_uint64(n):
+    return (pack_byte(n >> 56)
+            + pack_byte(n >> 48)
+            + pack_byte(n >> 40)
+            + pack_byte(n >> 32)
+            + pack_byte(n >> 24)
+            + pack_byte(n >> 16)
+            + pack_byte(n >> 8)
+            + pack_byte(n))
+
+def pack_string(s):
+    return pack_uint32(len(s)) + s
+
+def unpack_byte(s):
+    return ord(s[0]), s[1:]
+
+def unpack_uint32(s):
+    return ((ord(s[0]) << 24)
+            + (ord(s[1]) << 16)
+            + (ord(s[2]) << 8)
+            + ord(s[3])), s[4:]
+
+def unpack_string(s):
+    n, s = unpack_uint32(s)
+    return s[0:n], s[n:]
+
+def unpack_status(data):
+    status,data = unpack_uint32(data)
+    message,data = unpack_string(data)
+    lang,data = unpack_string(data)
+    return status, message, lang
+
+class SftpError(Exception):
+    def __init__(self, s):
+        self.description = s
+    def __str__(self):
+        return self.description
+
+class sftpfile:
+    def __init__(self, sftp, handle, name):
+        self.sftp = sftp
+        self.handle = handle
+        self.eof = False                # input EOF seen
+        self.input = ""                 # pending input
+        self.output = ""                # pending output
+        self.offset = 0                 # file offset
+        self.name = name
+        self.closed = False
+
+    def _fill(self, n=8192):
+        """Read some more bytes into the input buffer."""
+        if self.eof:
+            return
+        id = self.sftp.newid()
+        self.sftp.send(sftp.SSH_FXP_READ, id,
+                       pack_string(self.handle)
+                       + pack_uint64(self.offset)
+                       + pack_uint32(n))
+        type,data=self.sftp.recv(id=id)
+        if type == sftp.SSH_FXP_STATUS:
+            status,message,lang = unpack_status(data)
+            if status == sftp.SSH_FX_EOF:
+                self.eof = True
+                return
+            if status != sftp.SSH_FX_OK:
+                self.sftp.error("reading %s: sftp error %d: %s"
+                                % (self.name, status, message))
+        if type != sftp.SSH_FXP_DATA:
+            self.sftp.error("reading %s: unexpected response %d"
+                            % (self.name, type))
+        input, data = unpack_string(data)
+        self.offset += len(input)
+        self.input += input             # append to buffer
+        
+    def flush(self):
+        """Flush the output buffer"""
+        if self.output == "":
+            return                      # nothing to do
+        id = self.sftp.newid()
+        self.sftp.send(sftp.SSH_FXP_WRITE, id,
+                       pack_string(self.handle)
+                       + pack_uint64(self.offset)
+                       + pack_string(self.output))
+        type,data=self.sftp.recv(id=id)
+        self.sftp.check(type, data, "writing %s" % self.name,
+                        sftp.SSH_FXP_STATUS)
+        self.offset += len(self.output)
+        self.output = ""
+        self.input = ""                 # junk buffered input
+
+    def close(self):
+        """Close the file."""
+        self.flush()
+        id = self.sftp.newid()
+        self.sftp.send(sftp.SSH_FXP_CLOSE, id,
+                       pack_string(self.handle))
+        type,data=self.sftp.recv(id=id)
+        self.sftp.check(type, data, "closing %s" % self.name,
+                        sftp.SSH_FXP_STATUS)
+        self.closed = True
+    
+    def read(self, n = None):
+        """Read up to N bytes from a file.  If N is absent read the rest of
+        the file."""
+        while not self.eof and (n == None or len(self.input) < n):
+            self._fill()
+        if n == None:
+            n = len(self.input)
+        ret = self.input[:n]
+        self.input = self.input[n:]
+        return ret
+
+    def write(self, s):
+        self.output += s
+        if len(self.output) > 8192:
+            self.flush()
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        s = self.readline()
+        if s == "":
+            raise StopIteration()
+        return s
+
+    def readline(self, n = None):
+        where = self.input.find('\n')
+        while (where == -1
+               and not self.eof
+               and (n == None or len(self.input) < n)):
+            self._fill()
+            where = self.input.find('\n')
+        if where == -1:
+            where = len(self.input)
+        else:
+            where += 1                  # include the newline
+        if n != None and where > n:
+            where = n
+        return self.read(where)
+
+    def readlines(self, sizehint = None):
+        lines = []
+        for line in self:
+            lines.append(line)
+        return lines
+
+# http://www.openssh.com/txt/draft-ietf-secsh-filexfer-02.txt
+# http://www.ietf.org/internet-drafts/draft-ietf-secsh-filexfer-12.txt
+class sftp(fsbase):
+    """sftp implementation
+
+    sftp(USERHOST) returns an sftp object for USERHOST.
+    """
+
+    # packets types from draft-ietf-secsh-filexfer-02.txt 3
+    SSH_FXP_INIT                =1
+    SSH_FXP_VERSION             =2
+    SSH_FXP_OPEN                =3
+    SSH_FXP_CLOSE               =4
+    SSH_FXP_READ                =5
+    SSH_FXP_WRITE               =6
+    SSH_FXP_LSTAT               =7
+    SSH_FXP_FSTAT               =8
+    SSH_FXP_SETSTAT             =9
+    SSH_FXP_FSETSTAT           =10
+    SSH_FXP_OPENDIR            =11
+    SSH_FXP_READDIR            =12
+    SSH_FXP_REMOVE             =13
+    SSH_FXP_MKDIR              =14
+    SSH_FXP_RMDIR              =15
+    SSH_FXP_REALPATH           =16
+    SSH_FXP_STAT               =17
+    SSH_FXP_RENAME             =18
+    SSH_FXP_READLINK           =19
+    SSH_FXP_SYMLINK            =20
+    SSH_FXP_STATUS            =101
+    SSH_FXP_HANDLE            =102
+    SSH_FXP_DATA              =103
+    SSH_FXP_NAME              =104
+    SSH_FXP_ATTRS             =105
+    SSH_FXP_EXTENDED          =200
+    SSH_FXP_EXTENDED_REPLY    =201
+
+    # attribute flag bits from draft-ietf-secsh-filexfer-02.txt 5
+    SSH_FILEXFER_ATTR_SIZE          =0x00000001
+    SSH_FILEXFER_ATTR_UIDGID        =0x00000002
+    SSH_FILEXFER_ATTR_PERMISSIONS   =0x00000004
+    SSH_FILEXFER_ATTR_ACMODTIME     =0x00000008
+    SSH_FILEXFER_ATTR_EXTENDED      =0x80000000l
+
+    # pflags from draft-ietf-secsh-filexfer-02.txt 6.3
+    SSH_FXF_READ            =0x00000001
+    SSH_FXF_WRITE           =0x00000002
+    SSH_FXF_APPEND          =0x00000004
+    SSH_FXF_CREAT           =0x00000008
+    SSH_FXF_TRUNC           =0x00000010
+    SSH_FXF_EXCL            =0x00000020
+
+    # status codes from draft-ietf-secsh-filexfer-02.txt 7
+    SSH_FX_OK                            =0
+    SSH_FX_EOF                           =1
+    SSH_FX_NO_SUCH_FILE                  =2
+    SSH_FX_PERMISSION_DENIED             =3
+    SSH_FX_FAILURE                       =4
+    SSH_FX_BAD_MESSAGE                   =5
+    SSH_FX_NO_CONNECTION                 =6
+    SSH_FX_CONNECTION_LOST               =7
+    SSH_FX_OP_UNSUPPORTED                =8
+
+    def __init__(self, userhost):
+        if verbose:
+            print "Connecting to %s" % userhost
+        self.input, self.output = popen2("ssh -x -s %s sftp" % userhost)
+        self.tag = userhost
+        self.ids = 0
+        self.ext = {}
+        self.init()
+    def error(self, msg):
+        raise SftpError("%s: %s" % (self.tag, msg))
+    def newid(self):
+        """Return a new ID, not used recently."""
+        self.ids = (self.ids + 1) & 0xFFFFFFFFl
+        return self.ids
+    def dump(self, what, s):
+        print "%s: %s" % (what, join(map(lambda c: "%02x" % ord(c), s), ""))
+    def send(self, type, id, rest):
+        """Send a packet.  If ID is None then no ID is included."""
+        if id == None: 
+            data = pack_byte(type) + rest
+        else:
+            data = pack_byte(type) + pack_uint32(id) + rest
+        all = pack_uint32(len(data)) + data
+        #self.dump("sending", all)
+        self.output.write(all)
+        self.output.flush()
+    def recv(self, id=None):
+        """Receive a packet.  If ID is not None then it is checked
+        against the request.  Returns TYPE,DATA."""
+        data = self.input.read(4)
+        #self.dump("received", data)
+        n,data = unpack_uint32(data)
+        data = self.input.read(n)
+        #self.dump("received", data)
+        if(len(data) != n):
+            self.error("wanted %d bytes but only got %d" % (n, len(data)))
+        got_type, data = unpack_byte(data)
+        if id != None:
+           got_id, data = unpack_uint32(data)
+           if id != got_id:
+               self.error("wanted ID %#x but got %#x" % (id, got_id))
+        return got_type,data
+    def check(self, type, data, what, want_type):
+        if type == sftp.SSH_FXP_STATUS:
+            status,message,lang = unpack_status(data)
+            if status != sftp.SSH_FX_OK:
+                self.error("%s: sftp error %d: %s" % (what, status, message))
+        if want_type != None and type != want_type:
+            if must or type != sftp.SSH_FXP_STATUS:
+                self.error("%s: unexpected response %d" % (what, type))
+    def init(self):
+        """Initialize the protocol."""
+        self.send(sftp.SSH_FXP_INIT, None, pack_uint32(3));
+        type,data=self.recv(id=None)
+        self.check(type, data, "initializing sftp", sftp.SSH_FXP_VERSION)
+        version, data = unpack_uint32(data)
+        while len(data) > 0:
+            xname, data = unpack_string(data)
+            xdata, data = unpack_string(data)
+            ext[xname] = xdata
+    def open(self, path, mode):
+        """Open file PATH on the remote host.  MODE should be 'r' to read
+        and 'w' to write.  If the file exists it is overwritten."""
+        if mode == "rb" or mode == 'r':
+            pflags = sftp.SSH_FXF_READ
+        elif mode == "wb" or mode == 'w':
+            pflags = sftp.SSH_FXF_WRITE|sftp.SSH_FXF_CREAT|sftp.SSH_FXF_TRUNC
+        else:
+            raise ValueError("sftp.open opening %s unknown mode %s"
+                             % (path, repr(mode)))
+        id = self.newid()
+        attrs = pack_uint32(0)          # draft-ietf-secsh-filexfer-02.txt 5
+        self.send(sftp.SSH_FXP_OPEN, id,
+                  (pack_string(path)
+                   + pack_uint32(pflags)
+                   + attrs))
+        type,data=self.recv(id=id)
+        self.check(type, data, "opening %s" % path, sftp.SSH_FXP_HANDLE)
+        if type != sftp.SSH_FXP_HANDLE:
+            self.error("opening %s: sftp error %d: %s"
+                       % (path, status, message))
+        handle,data = unpack_string(data)
+        return sftpfile(self, handle, path)
+    def remove(self, path):
+        """Remove file PATH."""
+        id = self.newid()
+        self.send(sftp.SSH_FXP_REMOVE, id, pack_string(path))
+        type,data = self.recv(id=id)
+        self.check(type, data, "removing %s" % path, sftp.SSH_FXP_STATUS)
+    def rename(self, old, new):
+        """Rename OLD to NEW."""
+        id = self.newid()
+        self.send(sftp.SSH_FXP_RENAME, id, pack_string(old) + pack_string(new))
+        type,data = self.recv(id=id)
+        self.check(type, data, "renaming %s" % old, sftp.SSH_FXP_STATUS)
+    def mkdir(self, path):
+        """Create a directory called PATH."""
+        id = self.newid()
+        attrs = pack_uint32(0)          # draft-ietf-secsh-filexfer-02.txt 5
+        self.send(sftp.SSH_FXP_MKDIR, id, pack_string(path) + attrs)
+        type,data = self.recv(id=id)
+        self.check(type, data, "creating directory %s" % path, sftp.SSH_FXP_STATUS)
+    def rmdir(self, path):
+        """Remove directory PATH."""
+        id = self.newid()
+        self.send(sftp.SSH_FXP_RMDIR, id, pack_string(path))
+        type,data = self.recv(id=id)
+        self.check(type, data, "removing directory %s" % path, sftp.SSH_FXP_STATUS)
+    def isfile(self, path):
+        """Return True if PATH exists and is a file and FALSE otherwise."""
+        attrs = pack_uint32(0)
+        return self.isfoo(path, sftp.SSH_FXP_OPEN,
+                          pack_string(path)
+                          + pack_uint32(sftp.SSH_FXF_READ)
+                          + attrs)
+    def isdir(self, path):
+        """Return True if PATH exists and is a directory and FALSE otherwise."""
+        return self.isfoo(path, sftp.SSH_FXP_OPENDIR,
+                          pack_string(path))
+    def isfoo(self, path, type, data):
+        # Shared code for isdir/isfile
+        id = self.newid()
+        self.send(type, id, data)
+        type,data=self.recv(id=id)
+        if type == sftp.SSH_FXP_STATUS:
+            status,message,lang = unpack_status(data)
+            if status == sftp.SSH_FX_NO_SUCH_FILE:
+                return False
+            else:
+                self.error("testing %s: sftp error %d: %s"
+                           % (path, status, message))
+            return False
+        elif type != sftp.SSH_FXP_HANDLE:
+            self.error("testing %s: unexpected response %d"
+                       % (path, type))
+        handle, data = unpack_string(data)
+        self.send(sftp.SSH_FXP_CLOSE, id, pack_string(handle))
+        type,data=self.recv(id=id)
+        self.check(type, data, "closing handle", sftp.SSH_FXP_STATUS)
+        return True                     # file did exist
+    def listdir(self, path):
+        id = self.newid()
+        self.send(sftp.SSH_FXP_OPENDIR, id, pack_string(path))
+        type,data=self.recv(id=id)
+        self.check(type, data, "opening %s" % path, sftp.SSH_FXP_HANDLE)
+        handle,data = unpack_string(data)
+        dirs = []
+        try:
+            while True:
+                self.send(sftp.SSH_FXP_READDIR, id)
+                type,data=self.recv(id=id)
+                if type == sftp.SSH_FXP_NAME:
+                    count, data = unpack_uint32(data)
+                    while count > 0:
+                        filename, data = unpack_string(data)
+                        longname, data = unpack_string(data)
+                        attrs, data = unpack_attrs(data)
+                        dirs.push(filename)
+                elif type == sftp.SSH_FXP_STATUS:
+                    status,message,lang = unpack_status(data)
+                    if status == sftp.SSH_FX_EOF:
+                        break
+                    else:
+                        self.error("listing %s: sftp error %d: %s"
+                                   % (path, status, message))
+                else:
+                    self.error("listing %s: unexpected response %d"
+                               % (path, type))
+        finally:
+            # close the handle regardless
+            self.send(sftp.SSH_FXP_CLOSE, id, pack_string(handle))
+            type,data=self.recv(id=id)
+            self.check(type, data, "closing handle", sftp.SSH_FXP_STATUS)
+
+# stats -----------------------------------------------------------------------
+
+weirdies = 0
+allfiles = 0
+alllinks = 0
+alldirs = 0
+newfiles = 0
+warnings = 0
+alldevs = 0
+
+# functions -------------------------------------------------------------------
+
+def fatal(s):
+    """Issue an error message including S and terminate"""
+    sys.stderr.write("FATAL: %s\n" % s)
+    sys.exit(127)
+
+def warn(s):
+    """Issue a warning message include S"""
+    global warnings
+    sys.stderr.write("WARNING: %s\n" % s)
+    warnings += 1
+
+def sha1(fs, path):
+    """Return the SHA-1 hash of the file named by PATH in hex"""
+    f = fs.open(path, "rb")
+    m = sha.sha()
+    s = f.read(4096)
+    while s != "":
+        m.update(s)
+        s = f.read(4096)
+    return m.hexdigest()
+
+uids={}
+def uid2name(uid):
+    """Convert UID to a name"""
+    if not(uid in uids):
+        try:
+            uids[uid] = getpwuid(uid)
+        except KeyError:
+            uids[uid] = [str(uid)]
+    return uids[uid][0]
+
+gids={}
+def gid2name(gid):
+    """Convert GID to a name"""
+    if not(gid in gids):
+        try:
+            gids[gid] = getgrgid(gid)
+        except KeyError:
+            gids[gid] = [str(gid)]
+    return gids[gid][0]
+
+def name2uid(name):
+    """Convert a name to a UID"""
+    if name not in uids:
+        try:
+            uids[name] = [0, 0, int(name)]
+        except ValueError:
+            uids[name] = getpwnam(name)
+    return uids[name][2]
+
+def name2gid(name):
+    """Convert a name to a GID"""
+    if name not in gids:
+        try:
+            gids[name] = [0, 0, int(name)]
+        except:
+            gids[name] = getgrnam(name)
+    return gids[name][2]
+
+def copy(sfs, src, dfs, dest):
+    """Copy file SFS.SRC to DFS.DEST, ignoring permissions."""
+    s = sfs.open(src, 'rb')
+    d = dfs.open(dest, 'wb')
+    bytes = s.read(4096)
+    while bytes != "":
+        d.write(bytes)
+        bytes = s.read(4096)
+    s.close()
+    d.close()
+
+def copy_rip(sfs, src, dfs, dest):
+    """As copy() but uses rename-into-place"""
+    global rename_files
+    if rename_files:
+        tmp = "%s.tmp" % dest
+        copy(sfs, src, dfs, tmp)
+        dfs.rename(tmp, dest)
+    else:
+        # If we can't rename into place at try to make sure we don't
+        # leave a broken file behind.
+        try:
+            copy(sfs, src, dfs, dest)
+        except:
+            fs.remove(dest)
+            raise
+
+def try_warn(fn, what):
+    try:
+        fn()
+    except:
+        global warnings
+        warn("%s: %s" % (what, sys.exc_info()[1]))
+
+def excluded(path):
+    """Return True if PATH is excluded"""
+    for exclusion in exclude:
+        if fnmatch(path, exclusion):
+            return True
+    return False
+
+def hash_path(type, h):
+    global repo
+    repodir = os.path.join(repo, type, h[0:2], h[2:4])
+    repopath = os.path.join(repodir, h)
+    return repodir,repopath
+
+def scan_files(root, dir):
+    """Back up everything from root/dir down"""
+    global alllinks,allfiles,alldirs,weirdies,newfiles,alldevs,fs
+    files = os.listdir(os.path.join(root,dir))
+    files.sort()                        # so that diffs make sense
+    for f in files:
+        if dir == ".":
+            rn = f                      # avoid initial ./
+        else:
+            rn = os.path.join(dir,f)
+        if excluded(rn):
+            continue
+        fn = os.path.join(root,rn)
+        ls = os.lstat(fn)
+        mode = ls.st_mode;
+        details = {
+            "perms": "%0#o" % S_IMODE(mode),
+            "name": rn,
+            "uid": uid2name(ls.st_uid),
+            "gid": gid2name(ls.st_gid),
+            "atime": int(ls.st_atime),
+            "ctime": int(ls.st_ctime),
+            "mtime": int(ls.st_mtime)
+        };
+        if S_ISLNK(mode):
+            details["type"] = "link";
+            details["target"] = os.readlink(fn)
+            alllinks += 1
+        elif S_ISDIR(mode):
+            details["type"] = "dir";
+            alldirs += 1
+        elif S_ISREG(mode):
+            h = sha1(lfs, fn)
+            # type is implicitly file
+            details["sha1"] = h
+            if ls.st_nlink > 1:
+                # We want to be able to reconstruct link structure accurately
+                details["inode"] = ls.st_ino;
+            repodir,repopath = hash_path('sha1', h)
+            if not fs.isfile(repopath):
+                # Copy the file into the repository
+                fs.makedirs(repodir)
+                copy_rip(lfs, fn, fs, repopath)
+                # Put the atime back
+                if preserve_atime:
+                    os.times(fn, (details['atime'], details['mtime']))
+                newfiles += 1
+            allfiles += 1
+        elif S_ISCHR(mode):
+            details['type'] = 'chr'
+            details['rdev'] = str(ls.st_rdev)
+            alldevs += 1
+        elif S_ISBLK(mode):
+            details['type'] = 'blk'
+            details['rdev'] = str(ls.st_rdev)
+            alldevs += 1
+        else:
+            weirdies += 1
+            warn("cannot save %s" % fn)
+            continue
+        # Dump a line for the file
+        ind.write("%s\n" % urlencode(details))
+        # Recurse into subdirectories
+        if S_ISDIR(mode) and (cross_mounts or not os.path.ismount(fn)):
+            scan_files(root, rn)
+
+def parse_details(line):
+    """Parse a details line from an index file back into a dict"""
+    if line[-1] != "\n":
+        warn("missing newline in index line")
+        return None
+    # Keep blanks and raise on error
+    details = parse_qs(line[:-1], True, True)
+    for key in details:
+        details[key] = details[key][0]
+    return details
+
+def parse_index(index, handler):
+    """Read an the index file and call HANDLER with each details dict"""
+    seen_end = False
+    directory = None
+    global fs
+    for line in fs.open(index, "r"):
+        if line == "[end]\n":
+            seen_end = True
+            continue
+        if seen_end:
+            warn("data in index file after end marker")
+            break
+        details = parse_details(line)
+        if details != None:
+            if details['name'][0:2] == "./":
+                # Filename is relative to directory containing
+                # previous filename.  We rewrite it here for the
+                # convenience of the handler.
+                details['name'] = "%s/%s" % (directory, details['name'][2:])
+            else:
+                directory = os.path.dirname(details['name'])
+            handler(details)
+    if not seen_end:
+        warn("index file truncated - end marker not found")
+    if warnings > 0:
+        fatal("%d problems found" % warnings)
+
+# TODO.  An interrupted backup with --no-rename can leave wrong hash
+# files.  --verify should spot this.
+def verify(details):
+    """Verify a file"""
+    if 'type' not in details:
+        # Regular file
+        if 'sha1' in details:
+            # Find the actual hash we saved
+            repodir, repopath = hash_path('sha1', details['sha1'])
+            h = sha1(fs, repopath)
+            if h != details['sha1']:
+                warn("hash of %s does not match" % details['name'])
+        elif 'data' in details:
+            pass                        # always OK
+        else:
+            warn("%s does not have a known hash" % details['name'])
+
+inodes = {}
+def restore(details):
+    """Restore a file"""
+    fn = os.path.join(root, details['name'])
+    global inodes
+    if 'inode' in details and details['inode'] in inodes:
+        # File has more than one link and we've already seen the first
+        tmp = fn + "~restore~"
+        os.link(inodes[details['inode']], tmp)
+        # Rename into place
+        os.rename(tmp, fn)
+        # Done
+        return
+    if 'type' not in details:
+        # Regular file
+        # We'll write to a temporary name
+        tmp = fn + "~restore~"
+        if 'sha1' in details:
+            # File is the repo indexed by hash
+            repodir, repopath = hash_path('sha1', details['sha1'])
+            copy(fs, repopath, lfs, tmp)
+        elif 'data' in details:
+            # We have the raw data of the file
+            f = lfs.open(tmp, "w")
+            f.write(details['data'])
+            f.close()
+        else:
+            warn("%s does not have a known hash" % details['name'])
+        # Fix up permissions
+        try_warn(lambda: os.chmod(tmp, int(details['perms'], 8)),
+                 "setting permissions on %s" % details['name'])
+        try_warn(lambda: os.lchown(tmp, name2uid(details['uid']),
+                                   name2gid(details['gid'])),
+                 "setting ownership of %s to %s:%s" % (details['name'],
+                                                       details['uid'],
+                                                       details['gid']))
+        try_warn(lambda: os.utime(tmp, (int(details['atime']),
+                                        int(details['mtime']))),
+                 "setting times for %s" % details['name'])
+        if 'inode' in details:
+            inodes[details['inode']] = fn
+        # Rename into place
+        os.rename(tmp, fn)
+    elif details['type'] == 'link':
+        tmp = fn + "~restore~"
+        os.symlink(details['target'], tmp)
+        # Permissions are always 777 on links
+        try_warn(lambda: os.lchown(tmp, name2uid(details['uid']),
+                                   name2gid(details['gid'])),
+                 "setting permissions on %s" % details['name'])
+        # Rename into place
+        os.rename(tmp, fn)
+    elif details['type'] == 'dir':
+        # Create the directory if it does not exist already
+        if not os.path.exists(fn):
+            os.mkdir(fn, int(details['perms'], 8))
+        elif not os.path.isdir(fn):
+            warn("%s already exists and is not a directory" % details['name'])
+            return
+        # mkdir honors umask so permissions might be wrong
+        try_warn(lambda: os.chmod(fn, int(details['perms'], 8)),
+                 "setting permissions on %s" % details['name'])
+        try_warn(lambda: os.lchown(fn, name2uid(details['uid']),
+                                   name2gid(details['gid'])),
+                 "setting ownership of %s to %s:%s" % (details['name'],
+                                                       details['uid'],
+                                                       details['gid']))
+        os.utime(fn, (int(details['atime']), int(details['mtime'])))
+    elif details['type'] == 'chr' or details['type'] == 'blk':
+        tmp = fn + "~restore~"
+        if details['type'] == 'chr':
+            tp = S_IFCHR
+        else:
+            tp = S_IFBLK
+        os.mknod(tmp, int(details['perms'], 8) | tp, int(details['rdev']))
+        # Fix up permissions, ownership and times
+        try_warn(lambda: os.chmod(tmp, int(details['perms'], 8)),
+                 "setting permissions on %s" % details['name'])
+        try_warn(lambda: os.lchown(tmp, name2uid(details['uid']),
+                                   name2gid(details['gid'])),
+                 "setting ownership of %s to %s:%s" % (details['name'],
+                                                       details['uid'],
+                                                       details['gid']))
+        try_warn(lambda: os.utime(tmp, (int(details['atime']),
+                                        int(details['mtime']))),
+                 "setting times for %s" % details['name'])
+        # Rename into place
+        os.rename(tmp, fn)
+    else:
+        warn("%s has unknown file type %s" % (details['name'],
+                                              details['type']))
+
+def scan_repo(dir):
+    """Scan the repository directory, deleting temporary files and
+    recording hashes"""
+    global nfiles
+    for f in fs.listdir(dir):
+        fn = os.path.join(dir, f)
+        if os.path.isdir(fn):
+            scan_repo(fn)               # recurse into subdirectories
+        elif fs.isfile(fn):
+            files[f] = fn               # record all regular files
+            nfiles += 1
+            if verbose and nfiles % 1000 == 0:
+                sys.stderr.write("checked %d files...\n" % nfiles)
+        else:
+            warn("unknown file type for %s" % fn)
+
+def keep(details):
+    global files
+    try:
+        del files[details['sha1']]
+    except KeyError:                    # could be details[] or files[]
+        pass
+
+# parse arguments -------------------------------------------------------------
+
+argv = sys.argv[1:]
+try:
+    while len(argv) > 0 and argv[0][0] == '-':
+        arg = argv.pop(0)
+        if (arg == "--backup"
+            or arg == "--restore"
+            or arg == "--verify"
+            or arg == "--cleanup"):
+            if mode != None:
+                fatal("mode already specified")
+            mode = arg
+        elif arg == "--sftp":
+            userhost = argv.pop(0)
+        elif arg == "--no-rename":
+            rename_files = False
+        elif arg == "--root":
+            root = argv.pop(0)
+        elif arg == "--repo":
+            repo = argv.pop(0)
+        elif arg == "--index":
+            index = argv.pop(0)
+        elif arg == "--exclude":
+            exclude.append(argv.pop(0))
+        elif arg == "--one-file-system":
+            cross_mounts = False
+        elif arg == "--preserve-atime":
+            preserve_atime = False
+        elif arg == "--overwrite":
+            overwrite_indexes = True
+        elif arg == "--verbose":
+            verbose = True
+        elif arg == "--help":
+            print """Usage:
+
+  hbackup --backup|--restore|--verify OPTIONS
+  hbackup --cleanup OPTIONS INDEXES...
+
+Options:
+  --backup           Save files from root to repo+index
+  --restore          Restore files from repo+index to root
+  --verify           Check files below repo+index
+  --cleanup          List obsolete files from repo
+  --root DIR         Location of files to backup/to restore to
+  --index PATH       Location of index file
+  --repo DIR         Location of repository directory
+  --one-file-system  Don't cross mounts (--backup only)
+  --preserve-atime   Don't trash atime (--backup only)
+  --exclude PATTERN  Exclude files matching PATTERN (--backup only)
+  --overwrite        Overwrite existing index files
+  --sftp USER@HOST   Access repository via SFTP
+  --no-rename        Write repo files directly, don't renaming into place
+
+Examples:  hbackup --repo REPO --index INDEX --root SOURCE --backup
+           hbackup --repo REPO --index INDEX --root DESTINATION --restore
+           hbackup --repo REPO --index INDEX --verify
+           hbackup --repo REPO --cleanup .../indexes/* | xargs rm"""
+            sys.exit(0)
+        else:
+            fatal("unknown option %s" % arg)
+except IndexError:
+    fatal("missing argument to %s" % arg)
+
+# check args make sense -------------------------------------------------------
+
+# XXX this is completely mad, do something more sensible
+
+if mode == None:
+    fatal("no mode specified")
+
+if mode == "--cleanup" and userhost != None:
+    fatal("cannot do --cleanup with --sftp")
+
+if mode == "--cleanup" and len(argv) == 0:
+    fatal("--cleanup but no index files specified")
+
+if mode != "--cleanup" and len(argv) > 0:
+    fatal("unknown option %s" % argv[0])
+
+if mode != "--backup" and exclude != []:
+    fatal("--exclude only makes sense with --backup")
+
+if mode == "--verify" and root != None:
+    fatal("--root does not make sense with --verify")
+
+if repo == None:
+    fatal("--repo must be specified")
+
+if mode != "--cleanup" and index == None:
+    fatal("--index must be specified")
+
+if mode == "--cleanup" and index != None:
+    fatal("--index makes no sense with --cleanup")
+
+if (mode == "--backup" or mode == "--restore") and root == None:
+    fatal("--root must be specified with %s" % mode)
+
+if mode != "--backup" and cross_mounts == False:
+    fatal("--one-file-system only makes sense with --backup")
+
+if mode != "--backup" and preserve_atime == True:
+    fatal("--preserve-atime only makes sense with --backup")
+
+# do the deed -----------------------------------------------------------------
+
+if userhost == None:
+    fs = localfs()
+else:
+    fs = sftp(userhost)
+lfs = localfs()
+
+if mode == "--backup":
+    if (not overwrite_indexes) and fs.isfile(index):
+        if verbose:
+            print "Index file already exists: %s" % index
+            print "Specify --overwrite to overwrite it"
+            sys.exit(0)
+    if fs.isfile("%s/sha1/unsafe" % repo):
+        fatal("a --no-rename backup may have been interrupted!")
+    if fs.isfile("%s/sha1/active" % repo):
+        fatal("a backup is in progress or has been interrupted")
+    fs.makedirs("%s/sha1" % repo)
+    fs.open("%s/sha1/active" % repo, "w").close()
+    # open output file
+    if rename_files:
+        index_tmp = "%s.tmp" % index
+        ind = fs.open(index_tmp, "w")
+    else:
+        ind = fs.open(index, "w")
+    # do the scan_files
+    if not rename_files:
+        fs.open("%s/sha1/unsafe" % repo, "w").close()
+    scan_files(root, ".")
+    # write an end marker
+    ind.write("[end]\n");
+    # drop the index into place
+    ind.close()
+    if rename_files:
+        fs.rename(index_tmp, index)
+    if not rename_files:
+        fs.remove("%s/sha1/unsafe" % repo)
+    fs.remove("%s/sha1/active" % repo)
+    # report
+    if verbose:
+        print "Files:       %10d" % allfiles
+        print "Links:       %10d" % alllinks
+        print "Directories: %10d" % alldirs
+        print "Devices:     %10d" % alldevs
+        print "New files:   %10d" % newfiles
+    if verbose or weirdies != 0:
+        print "Unsavable:   %10d" % weirdies
+    if verbose or warnings > 0:
+        print "Warnings:    %10d" % warnings
+elif mode == "--verify":
+    parse_index(index, verify)
+    if verbose:
+        print "OK"
+elif mode == "--restore":
+    parse_index(index, restore)
+    if verbose:
+        print "OK"
+elif mode == "--cleanup":
+    files = {}
+    nfiles = 0
+    scan_repo(os.path.join(repo, "sha1"))
+    for i in argv:
+        if verbose:
+            sys.stderr.write("checking %s" % i)
+        parse_index(i, keep)
+    for f in files:
+        print files[f]
+
+# arch-tag:AB9/3qAMryZ0zLABO5ZKSw

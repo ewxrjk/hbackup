@@ -1,0 +1,125 @@
+#! /bin/bash
+set -e
+
+dotests() {
+  local what=$1
+
+  echo
+  echo "testing $what"
+  type $what
+
+  rm -rf ,test
+  mkdir ,test
+  repo=`pwd`/,test/repo
+  mkdir ,test/tree
+
+  cp ${srcdir}/*.cc ,test/tree
+  mkdir ,test/tree/d1
+  cp ${srcdir}/*.cc ${srcdir}/*.h ,test/tree/d1
+
+  echo A simple backup-verify-restore test
+  echo backup
+  ${what} --repo ${repo} --index ,test/h1 --root ,test/tree --backup
+  echo verify
+  ${what} --repo ${repo} --index ,test/h1 --verify 
+  mkdir ,test/r1
+  echo restore
+  ${what} --repo ${repo} --index ,test/h1 --root ,test/r1 --restore
+  diff -ruN ,test/tree ,test/r1
+
+  echo Delete some files and check that backup + restore works
+  rm ,test/tree/*.cc
+  echo backup
+  ${what} --repo ${repo} --index ,test/h2 --root ,test/tree --backup
+  mkdir ,test/r2
+  echo restore
+  ${what} --repo ${repo} --index ,test/h2 --root ,test/r2 --restore
+  diff -ruN ,test/tree ,test/r2
+
+  echo Clean up obsolete files
+  echo cleanup
+  echo Obsolete: ----
+  ${what} --repo ${repo} --cleanup --verbose ,test/h2
+  echo --------------
+
+  rm -rf ,test/r1
+  rm -rf ,test/r2
+
+  echo The restore should still work because only duplicated files deleted
+  mkdir ,test/r1
+  echo restore
+  ${what} --repo ${repo} --index ,test/h1 --root ,test/r1 --restore
+  # can't diff as tree is changed
+
+  echo Should be able to restore r2 also
+  mkdir ,test/r2
+  echo restore
+  ${what} --repo ${repo} --index ,test/h2 --root ,test/r2 --restore
+  diff -ruN ,test/tree ,test/r2
+
+  rm ,test/tree/d1/*.h
+  echo backup
+  ${what} --repo ${repo} --index ,test/h1 --overwrite --root ,test/tree --backup
+  echo Obsolete: ----
+  ${what} --repo ${repo} --cleanup --verbose ,test/h1
+  echo --------------
+  
+  echo cleanup
+  ${what} --repo ${repo} --cleanup --verbose ,test/h1 | xargs rm
+
+  rm -rf ,test/r1
+  mkdir ,test/r1
+  echo restore
+  ${what} --repo ${repo} --index ,test/h1 --root ,test/r1 --restore
+  diff -ruN ,test/tree ,test/r1
+
+  echo cleanup with bogus names
+  touch ${repo}/sha1/rubbish		# case 
+  mkdir -p ${repo}/sha1/00/00
+  touch ${repo}/sha1/00/00/0123456789       # wrong size
+  ${what} --repo ${repo} --cleanup --verbose ,test/h1
+
+}
+
+treetest() {
+  echo Create a complex tree and restore with both hbackup and nhbackup
+  echo populate
+  rm -rf ,test
+  mkdir -p ,test/tree
+  mkdir ,test/tree/d1 ,test/tree/d2 ,test/tree/d2/a ,test/tree/d2/b
+  cp ${srcdir}/*.cc ,test/tree/d1/.
+  cp ${srcdir}/*.h ,test/tree/d2/.
+  cp ${srcdir}/Makefile* ,test/tree/d2/a/.
+  cp ${srcdir}/*.c ,test/tree/d2/b/.
+  repo=`pwd`/,test/repo
+  echo backup with nhbackup
+  nhbackup --repo ${repo} --index ,test/h1 --root ,test/tree --backup
+  for what in nhbackup hbackup; do
+    echo verify with ${what}
+    ${what} --repo ${repo} --index ,test/h1 --verify 
+    echo restore with ${what}
+    rm -rf ,test/r${what}
+    mkdir ,test/r${what}
+    ${what} --repo ${repo} --index ,test/h1 --root ,test/r${what} --restore
+    echo check output against original
+    diff -ruN ,test/tree ,test/r${what}
+  done
+  echo compare output from both tools
+  diff -ruN ,test/rhbackup ,test/rnhbackup
+}
+ 
+
+# TODO:
+#   - test error behaviour
+#   - test unique features of each script
+#   - test remote filesystem support
+#   - ...
+
+dotests hbackup
+dotests nhbackup
+treetest
+
+echo
+echo OK
+echo
+# arch-tag:ppchK0T3Go5LMEjn8Tqz6Q

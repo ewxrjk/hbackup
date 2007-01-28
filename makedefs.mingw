@@ -1,0 +1,18 @@
+# Make definitions for a win32 cross-build
+
+prefix=/usr/local
+bindir=${prefix}/bin
+mandir=${prefix}/man
+man1dir=${mandir}/man1
+CXX=i586-mingw32msvc-g++ -Wall -W
+CC=i586-mingw32msvc-cc -Wall -W
+CPPFLAGS=-I/usr/local/mingw/include
+CXXFLAGS=-g -O2
+CFLAGS=-g -O2
+LDFLAGS=-L/usr/local/mingw/lib
+LIBS=-lpcre
+O=o
+EXE=.exe
+PLATOBJS=
+
+# arch-tag:njBlSQj5ggL7Eb4If52hVQ

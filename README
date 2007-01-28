@@ -1,0 +1,115 @@
+hbackup
+=======
+
+hbackup is a tool for efficiently backing up a UNIX filesystem to
+another filesystem (for instance on a removable hard disk).  It works
+on Linux and Mac OS X.
+
+There are currently two command tools provided: a Python script called
+hbackup, and a C++ program called nhbackup.
+   
+
+How it works
+------------
+
+Backups are performed by writing an index of all the directories and
+files on the source filesystem to a single file.  This records their
+name, permissions, etc.  For very short files it may also include
+their contents but for long files it just includes a hash of the
+contents.
+
+There is a separate directory structure which contains a mapping
+between hashes and file contents.
+
+Some useful consequences of this design are:
+
+ 1) Duplicate files are stored only once on the backup medium.  When
+    the second copy is encountered, it is already there in the hash
+    directory and so need not be written again.
+
+    Moreover if you back up several hosts to the same medium then
+    files common to both hosts, for instance many of the files under
+    /usr, only appear once on the backup device.
+
+ 2) All backups to the same medium are incremental, for the same
+    reason.  When you make a second backup, only the index and new
+    files need b e written to the backup medium.
+
+ 3) The demands on the backup filesystem are relatively light, and
+    FAT32 will suffice.  This makes it easier to share backup devices
+    between different platforms.
+
+It should be said that a less useful consequence is that when you
+delete old indexes, the removal of files no longer referenced by any
+index is a relatively slow and expensive process.
+
+
+How to use it
+-------------
+
+My nightly backups are organized as follows:
+
+   * I have a USB hard disk mounted on /usb.  It's formatted as FAT32.
+
+   * Local backups use the script backup.sfere, run nightly from cron.
+
+   * Remote backups from other hosts use the various rbackup.*
+     scripts.  These are invoked by SSH from the machine with the
+     backup device, to ensure that only backup is running at once.
+
+See the man page, hbackup.1, for command-line options etc.
+
+
+Technical Difficulties
+----------------------
+
+1. SFTP as implemented by OpenSSH (at the time of writing) does not
+   support renames on FAT32 filesystems.  This is because it tries to
+   provide a non-overwriting rename with link() and unlink() rather
+   than an overwriting rename with rename() (which is what hbackup
+   actually wants).
+
+   The Python script hbackup has a --no-rename option which writes
+   hash files in place but this is less than satisfactory.  A better
+   alternative if backing up over SFTP is to apply openssh.patch and
+   install the resulting SFTP server in /usr/local/bin, and use the
+   --sftp-server option to nhbackup to access it.
+
+2. Mac OS X is capable of returning filenames from readdir() than
+   cannot then be accessed.  Currently hbackup will fail entirely if
+   this happens.  nhbackup will skip such files.
+
+   Neither of these are very good, but it's not clear what alternative
+   there is.
+
+
+Mailing Lists
+-------------
+
+http://www.chiark.greenend.org.uk/mailman/listinfo/sgo-software-discuss
+ - discussion, bug reports, etc
+
+http://www.chiark.greenend.org.uk/mailman/listinfo/sgo-software-announce
+ - announcements of new versions
+
+
+Author
+------
+
+hbackup is (c) 2006 Richard Kettlewell.
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+# arch-tag:6OyrRSUKNelyRoZDhsWRIg

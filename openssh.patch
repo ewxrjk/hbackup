@@ -1,0 +1,28 @@
+--- sftp-server.c.orig	2006-07-09 12:07:07.000000000 +0100
++++ sftp-server.c	2006-07-09 12:11:23.000000000 +0100
+@@ -839,9 +839,22 @@
+ 		status = errno_to_portable(errno);
+ 	else if (S_ISREG(sb.st_mode)) {
+ 		/* Race-free rename of regular files */
+-		if (link(oldpath, newpath) == -1)
+-			status = errno_to_portable(errno);
+-		else if (unlink(oldpath) == -1) {
++		if (link(oldpath, newpath) == -1) {
++			if(errno == EPERM) {
++				/* Writing to a filesystem that does not
++				 * support link(), for instance FAT32.  Instead
++				 * of just giving up we accept alternative
++				 * rename semantics as a workaround.
++				 *
++				 * http://bugs.debian.org/352589
++				 */
++				if(rename(oldpath, newpath) == -1)
++					status = errno_to_portable(errno);
++				else
++					status = SSH2_FX_OK;
++			} else
++				status = errno_to_portable(errno);
++		} else if (unlink(oldpath) == -1) {
+ 			status = errno_to_portable(errno);
+ 			/* clean spare link */
+ 			unlink(newpath);
