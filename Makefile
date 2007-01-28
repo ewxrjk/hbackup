@@ -1,5 +1,5 @@
 srcdir=.
-PLATFORM=unix
+PLATFORM:=$(shell uname -s)
 include ${srcdir}/makedefs.${PLATFORM}
 SHELL=/bin/bash
 VPATH=.:${srcdir}
@@ -72,4 +72,3 @@ distcheck: dist
 	cd ,distcheck && tar xfj ../hbackup-${VERSION}.tar.bz2
 	$(MAKE) -C ,distcheck/hbackup-${VERSION} srcdir=. check
 
-# arch-tag:JpU6uN885S6gBvG+D+Wkow

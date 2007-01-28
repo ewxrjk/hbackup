@@ -97,5 +97,3 @@ fi
 echo "--- Done"
 
 exit $status
-
-# arch-tag:q27quCxAgZ7BGx5hQ5bxyA

@@ -14,5 +14,3 @@ LIBS=-lpcre
 O=o
 EXE=.exe
 PLATOBJS=
-
-# arch-tag:njBlSQj5ggL7Eb4If52hVQ

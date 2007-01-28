@@ -121,6 +121,3 @@ int main()
     if(errors) printf("%d errors\n", errors);
     return !!errors;
 }
-
-
-/* arch-tag:a758WrpNlTI7M+cf1u+eNg */

@@ -387,4 +387,3 @@ void SHA1PadMessage(SHA1Context *context)
 
     SHA1ProcessMessageBlock(context);
 }
-/* arch-tag:VhyRQJmDNFp3aphu62B1Tw */

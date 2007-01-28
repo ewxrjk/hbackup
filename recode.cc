@@ -36,7 +36,11 @@ Recode::~Recode() {
 string Recode::convert(const string &s) {
   if(!cd) return s;                     // not converting
 
+#ifdef __linux__
+  char *inbuf = (char *)s.data();       // stupid linux iconv
+#else
   const char *inbuf = s.data();
+#endif
   size_t inbytesleft = s.size();
   string r;
   char buffer[1024];
@@ -47,7 +51,8 @@ string Recode::convert(const string &s) {
     size_t outbytesleft = sizeof buffer;
     
     // convert some bytes
-    const size_t n = iconv(cd, &inbuf, &inbytesleft, &outbuf, &outbytesleft);
+    const size_t n = iconv(cd, &inbuf, &inbytesleft,
+                           &outbuf, &outbytesleft);
     // append whatever we got
     r.append(buffer, sizeof buffer - outbytesleft);
     if(n == (size_t)-1) {
@@ -76,4 +81,4 @@ fill-column:79
 indent-tabs-mode:nil
 End:
 */
-/* arch-tag:QP6EtRFCh6JbwD+p5P6cdA */
+

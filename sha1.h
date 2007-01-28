@@ -79,4 +79,3 @@ int SHA1Result( SHA1Context *,
 #endif
 
 #endif
-/* arch-tag:i08Uu2f0tKkplC1FoDTckg */

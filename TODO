@@ -10,4 +10,3 @@
   convert on restore
 - incrementals, i.e. only back up files after a certain date; and
   restore of same
-# arch-tag:ihNXK57dXBJhBlKSzrq6nw

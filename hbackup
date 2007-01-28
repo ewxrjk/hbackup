@@ -992,4 +992,3 @@ elif mode == "--cleanup":
     for f in files:
         print files[f]
 
-# arch-tag:AB9/3qAMryZ0zLABO5ZKSw

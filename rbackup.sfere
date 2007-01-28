@@ -58,5 +58,3 @@ echo
 echo "--- Done"
 
 exit $status
-
-# arch-tag:qL8LdU7kSDqlpFrdGkZJtA

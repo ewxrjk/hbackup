@@ -1,4 +1,4 @@
-# Make definitions for a native UNIX build
+# Make definitions for a Linux build
 
 prefix=/usr/local
 bindir=${prefix}/bin
@@ -6,13 +6,11 @@ mandir=${prefix}/man
 man1dir=${mandir}/man1
 CXX=g++ -Wall -W -Werror
 CC=cc -Wall -W  -Werror
-CPPFLAGS=-I/sw/include
+CPPFLAGS=
 CXXFLAGS=-g -O2
 CFLAGS=-g -O2
-LDFLAGS=-L/sw/lib
-LIBS=-lpcre -liconv
+LDFLAGS=
+LIBS=-lpcre
 O=o
 EXE=
 PLATOBJS=
-
-# arch-tag:hTcZdWDHf1UA+LHtGL4BAg
