@@ -78,16 +78,6 @@ snapshot var.spool.news \
 	  --backup
 echo
 
-echo "--- Saving /export/mp3"
-snapshot mp3 \
-  nhbackup --repo $volume \
-	  --index $today/mp3 \
-	  --root /snap/mp3 \
-	  --one-file-system \
-	  --verbose \
-	  --backup
-echo
-
 echo "--- Done"
 
 exit $status

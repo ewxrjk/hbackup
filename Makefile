@@ -47,6 +47,9 @@ install-local: install
 	if [ -e ${srcdir}/rbackup.${hostname} ]; then \
 	  install -m 755 ${srcdir}/rbackup.${hostname} ${bindir}/rbackup;\
 	fi
+ifeq (${hostname},sfere)
+	install -m 755 ${srcdir}/backup.sfere-music ${bindir}/backup-music
+endif
 
 clean:
 	rm -f *.${O} nhbackup
