@@ -196,9 +196,9 @@ directory within that.  So index files are
 .SS "Backing Up"
 .PP
 .nf
-index=/usb/indexes/$(date +%F)/$(uname -n)/home
-mkdir -p $index
-hbackup --repo /usb --index $index --root /home --backup
+indexdir=/usb/indexes/$(date +%F)/$(uname -n)
+mkdir -p $indexdir
+hbackup --repo /usb --index $indexdir/home --root /home --backup
 .fi
 .PP
 If the index file already exists the backup will fail.  Although this
@@ -229,9 +229,9 @@ be broken by bad repo files.
 To restore January the 31st's backup to a temporary directory:
 .PP
 .nf
-index=/usb/indexes/2006-01-31/$(uname -n)/home
+indexdir=/usb/indexes/2006-01-31/$(uname -n)
 mkdir -p /restore/home
-hbackup --repo /usb --index index --root /restore/home --restore
+hbackup --repo /usb --index $indexdir/home --root /restore/home --restore
 .fi
 .PP
 See below regarding cross-system and cross-platform restores.
