@@ -463,11 +463,19 @@ void SftpFilesystem::rename(const string &oldpath, const string &newpath) {
   // Send the command
   const uint32_t id = newid();
   string cmd;
-  cmd.reserve(13 + oldpath.size() + newpath.size());
-  pack_uint8(cmd, SSH_FXP_RENAME);
-  pack_uint32(cmd, id);
-  pack_string(cmd, oldpath);
-  pack_string(cmd, newpath);
+  if(posix_rename) {
+    pack_uint8(cmd, SSH_FXP_EXTENDED);
+    pack_uint32(cmd, id);
+    pack_string(cmd, "posix-rename@openssh.org");
+    pack_string(cmd, oldpath);
+    pack_string(cmd, newpath);
+  } else {
+    cmd.reserve(13 + oldpath.size() + newpath.size());
+    pack_uint8(cmd, SSH_FXP_RENAME);
+    pack_uint32(cmd, id);
+    pack_string(cmd, oldpath);
+    pack_string(cmd, newpath);
+  }
   send(cmd);
   out->flush();
 
@@ -769,6 +777,8 @@ void SftpFilesystem::poll() {
 bool SftpFilesystem::ready(uint32_t id) const {
   return replies.find(id) != replies.end();
 }
+
+bool SftpFilesystem::posix_rename;
 
 /*
 Local Variables:

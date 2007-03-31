@@ -376,6 +376,8 @@ public:
                 list<string> &c);
   Filetype type(const string &path);
 
+  static bool posix_rename;             // use remote posix-rename extension
+
 private:
   void connect();
   // Connect to the SFTP server

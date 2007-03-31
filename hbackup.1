@@ -143,6 +143,14 @@ under \fB--no-rename\fR.
 .IP
 See http://bugs.debian.org/352589 for more information.
 .TP
+.B --posix-rename
+.RB ( nhbackup
+only).
+.IP
+Uses the posix-rename@openssh.org extension to perform renames.  Only
+works if your SFTP server supports it.  This is another approach to
+avoiding the SFTP design flaws referred to above.
+.TP
 .B --delete
 .RB ( nhbackup
 only).
