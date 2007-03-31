@@ -37,6 +37,7 @@ ${srcdir}/version.cc: ${srcdir}/Makefile
 	mv ${srcdir}/version.cc.tmp ${srcdir}/version.cc
 
 install:
+	mkdir -m 755 -p ${bindir} ${man1dir}
 	install -m 755 ${srcdir}/hbackup ${bindir}/hbackup
 	install -m 644 ${srcdir}/hbackup.1 ${man1dir}/hbackup.1
 	install -m 755 nhbackup ${bindir}/nhbackup
@@ -58,8 +59,14 @@ dist:
 	rm -rf hbackup-${VERSION}
 	mkdir hbackup-${VERSION}
 	mkdir hbackup-${VERSION}/ChangeLog.d
-	cp ${srcdir}/Makefile ${srcdir}/*.cc ${srcdir}/*.h hbackup-${VERSION}/.
-	cp ${srcdir}/makedefs.unix hbackup-${VERSION}/.
+	cp ${srcdir}/Makefile hbackup-${VERSION}/.
+	cp ${srcdir}/*.cc hbackup-${VERSION}/.
+	cp ${srcdir}/*.h hbackup-${VERSION}/.
+	cp ${srcdir}/*.c hbackup-${VERSION}/.
+	cp ${srcdir}/README hbackup-${VERSION}/.
+	cp ${srcdir}/makedefs.Linux hbackup-${VERSION}/.
+	cp ${srcdir}/makedefs.Darwin hbackup-${VERSION}/.
+	cp ${srcdir}/makedefs.mingw hbackup-${VERSION}/.
 	cp ${srcdir}/hbackup ${srcdir}/hbackup.1 hbackup-${VERSION}/.
 	cp ${srcdir}/tests hbackup-${VERSION}/.
 	cp ${srcdir}/hbackup.sh ${srcdir}/backup.curator hbackup-${VERSION}/.
