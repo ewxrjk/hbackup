@@ -73,6 +73,7 @@ dist:
 	cp ${srcdir}/backup.lyonesse ${srcdir}/backup.sfere ${srcdir}/backup.kakajou ${srcdir}/backup.chymax hbackup-${VERSION}/.
 	cp ${srcdir}/rbackup.lyonesse ${srcdir}/rbackup.sfere ${srcdir}/rbackup.kakajou ${srcdir}/rbackup.chymax hbackup-${VERSION}/.
 	cp ${srcdir}/ChangeLog.d/*[^~] hbackup-${VERSION}/ChangeLog.d/.
+	bzr log > hbackup-${VERSION}/ChangeLog.d/hbackup-bzr
 	tar cfj hbackup-${VERSION}.tar.bz2 hbackup-${VERSION}
 	rm -rf hbackup-${VERSION}
 
