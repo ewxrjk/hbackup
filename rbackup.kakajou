@@ -13,7 +13,7 @@ echo "--- Saving /Users"
 setstatus \
 nhbackup --repo $volume \
         --sftp $userhost \
-        --sftp-server $sftpserver \
+        --posix-rename \
 	--index $today/users \
 	--root /Users \
 	--exclude '/.Trash$' \
@@ -34,7 +34,7 @@ echo "--- Saving /local"
 setstatus \
 nhbackup --repo $volume \
         --sftp $userhost \
-        --sftp-server $sftpserver \
+        --posix-rename \
 	--index $today/local \
 	--root /local \
 	--verbose \
@@ -45,7 +45,7 @@ echo "--- Saving /etc"
 setstatus \
 nhbackup --repo $volume \
         --sftp $userhost \
-        --sftp-server $sftpserver \
+        --posix-rename \
 	--index $today/etc \
 	--root /etc \
 	--verbose \
@@ -57,7 +57,7 @@ echo "--- Saving /sw"
 setstatus \
 nhbackup --repo $volume \
         --sftp $userhost \
-        --sftp-server $sftpserver \
+        --posix-rename \
 	--index $today/sw \
 	--root /sw \
 	--verbose \
