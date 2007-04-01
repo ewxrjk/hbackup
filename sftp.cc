@@ -126,7 +126,7 @@ static void pack_bytes(string &s, const void *data, size_t n) {
 }
 
 static uint8_t unpack_uint8(const string &s, size_t &index) {
-  return s[index++];
+  return s.at(index++);
 }
 
 static uint32_t unpack_uint32(const string &s, size_t &index) {
@@ -323,21 +323,47 @@ private:
     writequeue.push_back(id);
     // Process any recently arrived replies.  In principle the replies might
     // arrive out of order but in practice this seems a bit unlikely.
-    while(writequeue.size() && fs->ready(writequeue.front()))
-      synchronize_one();
+    uint32_t ready_id;
+    while((ready_id = find_ready_write()))
+      synchronize_one(ready_id);
   }
 
-  void synchronize_one() {
+  void synchronize_one(uint32_t id = 0) {
     string reply;
     
+    if(!id)
+      id = writequeue.front();
+    // Wait for the reply to arrive
     fs->await(writequeue.front(), reply);
-    writequeue.pop_front();
+    list<uint32_t>::iterator it;
+    for(it = writequeue.begin();
+        it != writequeue.end() && *it != id;
+        ++it)
+      ;
+    assert(it != writequeue.end());
+    // Remove it from the queue
+    writequeue.erase(it);
+    // Check for errors
     fs->check("writing to", path, reply);
   }
 
   void synchronize() {
+    // We don't care what order we reap the replies in
     while(writequeue.size())
       synchronize_one();
+  }
+
+  // Return the ID of a write that has been replied to, or return 0 if there
+  // are none.
+  uint32_t find_ready_write() const {
+    for(list<uint32_t>::const_iterator it = writequeue.begin();
+        it != writequeue.end();
+        ++it) {
+      if(fs->ready(*it))
+        return *it;
+    }
+    // newid() never returns 0
+    return 0;
   }
 
 };
@@ -364,8 +390,9 @@ void SftpFilesystem::send(const string &cmd) {
 uint8_t SftpFilesystem::recv(string &reply) {
   string slen;
 
-  if(in->getbytes(slen, 4) != 4)
-    fatal("SFTP reply too short for length word");
+  const int llen = in->getbytes(slen, 4);
+  if(llen != 4)
+    fatal("SFTP reply too short for length word (only got %d bytes)", llen);
   size_t index = 0;
   const uint32_t len = unpack_uint32(slen, index);
   const uint32_t gotbytes = in->getbytes(reply, len);
@@ -651,18 +678,22 @@ void SftpFilesystem::contents(const string &path,
     cmd.clear();
     pack_uint8(cmd, SSH_FXP_READDIR);
     pack_uint32(cmd, id);
+    pack_string(cmd, handle);
     for(;;) {
       send(cmd);
       out->flush();
       const uint8_t r = await(id, reply);
       if(r == SSH_FXP_NAME) {
         size_t index = 5;               // skip type+id
-        while(index < reply.size()) {
+        size_t count = unpack_uint32(reply, index);
+        while(count > 0) {
           const string filename = unpack_string(reply, index);
           const string longname = unpack_string(reply, index);
           Attributes attrs;
           unpack_attrs(reply, index, attrs);
-          c.push_back(filename);
+          if(filename != "." && filename != "..")
+            c.push_back(filename);
+          --count;
         }
       } else {
         check("reading directory", path, reply, true);
@@ -777,6 +808,13 @@ void SftpFilesystem::poll() {
 bool SftpFilesystem::ready(uint32_t id) const {
   return replies.find(id) != replies.end();
 }
+
+uint32_t SftpFilesystem::newid() { 
+  if(id)
+    id++;
+  return id++;
+}
+
 
 bool SftpFilesystem::posix_rename;
 

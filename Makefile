@@ -7,7 +7,7 @@ LIBOBJECT=exceptions.${O} utils.${O} hash.${O} file.${O} \
 	globals.${O} local.${O}	exclude.${O} backup.${O} restore.${O} \
 	verify.${O} cleanup.${O} sftp.${O} version.${O} speedtest.${O} \
 	sha1.${O} filesystem.${O} recode.${O} ${PLATOBJS}
-VERSION=0.1
+VERSION=0.1+
 
 hostname:=$(shell uname -n|sed 's/\..*//')
 

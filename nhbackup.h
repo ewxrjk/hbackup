@@ -385,8 +385,8 @@ private:
   void init();
   // Initialize
 
-  inline uint32_t newid() { return id++; }
-  // Create a fresh ID
+  uint32_t newid();
+  // Create a fresh ID, which will never be 0.
 
   void send(const string &cmd);
   // Send a command (does not flush).

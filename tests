@@ -6,7 +6,6 @@ dotests() {
 
   echo
   echo "testing $what"
-  type $what
 
   rm -rf ,test
   mkdir ,test
@@ -19,27 +18,27 @@ dotests() {
 
   echo A simple backup-verify-restore test
   echo backup
-  ${what} --repo ${repo} --index ,test/h1 --root ,test/tree --backup
+  ${what} --repo ${repo} --index `pwd`/,test/h1 --root ,test/tree --backup
   echo verify
-  ${what} --repo ${repo} --index ,test/h1 --verify 
+  ${what} --repo ${repo} --index `pwd`/,test/h1 --verify 
   mkdir ,test/r1
   echo restore
-  ${what} --repo ${repo} --index ,test/h1 --root ,test/r1 --restore
+  ${what} --repo ${repo} --index `pwd`/,test/h1 --root ,test/r1 --restore
   diff -ruN ,test/tree ,test/r1
 
   echo Delete some files and check that backup + restore works
   rm ,test/tree/*.cc
   echo backup
-  ${what} --repo ${repo} --index ,test/h2 --root ,test/tree --backup
+  ${what} --repo ${repo} --index `pwd`/,test/h2 --root ,test/tree --backup
   mkdir ,test/r2
   echo restore
-  ${what} --repo ${repo} --index ,test/h2 --root ,test/r2 --restore
+  ${what} --repo ${repo} --index `pwd`/,test/h2 --root ,test/r2 --restore
   diff -ruN ,test/tree ,test/r2
 
   echo Clean up obsolete files
   echo cleanup
   echo Obsolete: ----
-  ${what} --repo ${repo} --cleanup --verbose ,test/h2
+  ${what} --repo ${repo} --cleanup --verbose `pwd`/,test/h2
   echo --------------
 
   rm -rf ,test/r1
@@ -48,36 +47,36 @@ dotests() {
   echo The restore should still work because only duplicated files deleted
   mkdir ,test/r1
   echo restore
-  ${what} --repo ${repo} --index ,test/h1 --root ,test/r1 --restore
+  ${what} --repo ${repo} --index `pwd`/,test/h1 --root ,test/r1 --restore
   # can't diff as tree is changed
 
   echo Should be able to restore r2 also
   mkdir ,test/r2
   echo restore
-  ${what} --repo ${repo} --index ,test/h2 --root ,test/r2 --restore
+  ${what} --repo ${repo} --index `pwd`/,test/h2 --root ,test/r2 --restore
   diff -ruN ,test/tree ,test/r2
 
   rm ,test/tree/d1/*.h
   echo backup
-  ${what} --repo ${repo} --index ,test/h1 --overwrite --root ,test/tree --backup
+  ${what} --repo ${repo} --index `pwd`/,test/h1 --overwrite --root ,test/tree --backup
   echo Obsolete: ----
-  ${what} --repo ${repo} --cleanup --verbose ,test/h1
+  ${what} --repo ${repo} --cleanup --verbose `pwd`/,test/h1
   echo --------------
   
   echo cleanup
-  ${what} --repo ${repo} --cleanup --verbose ,test/h1 | xargs rm
+  ${what} --repo ${repo} --cleanup --verbose `pwd`/,test/h1 | xargs rm
 
   rm -rf ,test/r1
   mkdir ,test/r1
   echo restore
-  ${what} --repo ${repo} --index ,test/h1 --root ,test/r1 --restore
+  ${what} --repo ${repo} --index `pwd`/,test/h1 --root ,test/r1 --restore
   diff -ruN ,test/tree ,test/r1
 
   echo cleanup with bogus names
   touch ${repo}/sha1/rubbish		# case 
   mkdir -p ${repo}/sha1/00/00
   touch ${repo}/sha1/00/00/0123456789       # wrong size
-  ${what} --repo ${repo} --cleanup --verbose ,test/h1
+  ${what} --repo ${repo} --cleanup --verbose `pwd`/,test/h1
 
 }
 
@@ -93,14 +92,14 @@ treetest() {
   cp ${srcdir}/*.c ,test/tree/d2/b/.
   repo=`pwd`/,test/repo
   echo backup with nhbackup
-  nhbackup --repo ${repo} --index ,test/h1 --root ,test/tree --backup
+  nhbackup --repo ${repo} --index `pwd`/,test/h1 --root ,test/tree --backup
   for what in nhbackup hbackup; do
     echo verify with ${what}
-    ${what} --repo ${repo} --index ,test/h1 --verify 
+    ${what} --repo ${repo} --index `pwd`/,test/h1 --verify 
     echo restore with ${what}
     rm -rf ,test/r${what}
     mkdir ,test/r${what}
-    ${what} --repo ${repo} --index ,test/h1 --root ,test/r${what} --restore
+    ${what} --repo ${repo} --index `pwd`/,test/h1 --root ,test/r${what} --restore
     echo check output against original
     diff -ruN ,test/tree ,test/r${what}
   done
@@ -117,6 +116,7 @@ treetest() {
 
 dotests hbackup
 dotests nhbackup
+dotests "nhbackup --sftp localhost"
 treetest
 
 echo
