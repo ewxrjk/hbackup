@@ -64,22 +64,6 @@ void do_backup() {
   if(!overwrite_index) backupfs->rename(indexfile + ".tmp", indexfile);
 }
 
-struct order_filenames {
-  const map<string,struct stat> &stats;
-  bool operator()(const string &a, const string &b) {
-    const struct stat &sa = stats.find(a)->second, &sb = stats.find(b)->second;
-
-    if(S_ISDIR(sb.st_mode) && !S_ISDIR(sa.st_mode))
-      return true;
-    else if(S_ISDIR(sa.st_mode) && !S_ISDIR(sb.st_mode))
-      return false;
-    else
-      return a < b;
-  }
-
-  inline order_filenames(const map<string,struct stat> &s): stats(s) {}
-};
-
 // Back up DIR
 static void backup_dir(const string &root, const string &dir,
                        File *index) {
@@ -132,12 +116,10 @@ static void backup_dir(const string &root, const string &dir,
     // remember the stat data
     s[name] = sb;
   }
-  // Put remaining filenames into order; subdirectories last and otherwise
-  // lexically sorted.  The main effect of this is to ensure that two backups
-  // of the same set of files produce the same index file, so that diffs are
-  // easier to follow.
-  order_filenames ci_compare(s);
-  sort(ci.begin(), ci.end(), ci_compare);
+  // Put remaining filenames into order.  The main effect of this is to ensure
+  // that two backups of the same set of files produce the same index file, so
+  // that diffs are easier to follow.
+  sort(ci.begin(), ci.end());
   // Now process all the files
   for(vector<string>::const_iterator it = ci.begin();
       it != ci.end();
