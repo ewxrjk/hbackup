@@ -18,6 +18,7 @@
  * USA
  */
 #include "nhbackup.h"
+#include <vector>
 
 /* It is not sensible to store small files by hash.
  *
@@ -63,15 +64,35 @@ void do_backup() {
   if(!overwrite_index) backupfs->rename(indexfile + ".tmp", indexfile);
 }
 
+struct order_filenames {
+  const map<string,struct stat> &stats;
+  bool operator()(const string &a, const string &b) {
+    const struct stat &sa = stats.find(a)->second, &sb = stats.find(b)->second;
+
+    if(S_ISDIR(sb.st_mode) && !S_ISDIR(sa.st_mode))
+      return true;
+    else if(S_ISDIR(sa.st_mode) && !S_ISDIR(sb.st_mode))
+      return false;
+    else
+      return a < b;
+  }
+
+  inline order_filenames(const map<string,struct stat> &s): stats(s) {}
+};
+
 // Back up DIR
 static void backup_dir(const string &root, const string &dir,
                        File *index) {
-  list<string> c;
+  list<string> c, dirs;
+  vector<string> ci;
+  map<string,struct stat> s;
   const string fulldir = root + (dir == "." ? "" : "/" + dir);
-  struct stat sb;
   bool first = true;
   
   hostfs->contents(fulldir, c);
+  // preallocate space for list of filenames
+  ci.reserve(c.size());
+  // stat all the files and exclude ones we're not going to consider
   for(list<string>::const_iterator it = c.begin();
       it != c.end();
       ++it) {
@@ -83,6 +104,7 @@ static void backup_dir(const string &root, const string &dir,
     // skip excluded files
     if(exclusions.excluded(localname)) continue;
     // stat the file
+    struct stat sb; 
     if(lstat(fullname.c_str(), &sb) < 0) {
       // MacOS will return files from readdir that you cannot then stat.
       // (There's one in my Photoshop tryout install.)  Insanity, but we try to
@@ -105,6 +127,25 @@ static void backup_dir(const string &root, const string &dir,
       ++unknown_files;
       continue;
     }
+    // keep this one
+    ci.push_back(name);
+    // remember the stat data
+    s[name] = sb;
+  }
+  // Put remaining filenames into order; subdirectories last and otherwise
+  // lexically sorted.  The main effect of this is to ensure that two backups
+  // of the same set of files produce the same index file, so that diffs are
+  // easier to follow.
+  order_filenames ci_compare(s);
+  sort(ci.begin(), ci.end(), ci_compare);
+  // Now process all the files
+  for(vector<string>::const_iterator it = ci.begin();
+      it != ci.end();
+      ++it) {
+    const string &name = *it;
+    const string localname = dir == "." ? name : dir + "/" + name;
+    const string fullname = root + "/" + localname;
+    const struct stat &sb = s[name];
     // figure out how to represent the name
     string relname;
     if(first) {
@@ -201,10 +242,7 @@ static void backup_dir(const string &root, const string &dir,
     } else if(S_ISDIR(sb.st_mode)) {
       index->putf("&type=dir\n");
       if(crossfs || !hostfs->ismount(fullname))
-        backup_dir(root, localname, index);
-      ++total_dirs;
-      // Next filename had better have an absolute path
-      first = true;
+        dirs.push_back(localname);
     } else if(S_ISLNK(sb.st_mode)) {
       index->putf("&target=%s&type=link\n",
                   urlencode(hostfs->readlink(fullname)).c_str());
@@ -218,6 +256,20 @@ static void backup_dir(const string &root, const string &dir,
       ++total_socks;
     }
   }
+  // And now deal with the subdirectories.  The consequence of doing the
+  // directories last is that if you know the start of a directory's contents
+  // in an index file, you just have to read up to the point where you find a
+  // file from any other directory, or hit eof, and you know that you've
+  // enumerated all the files in that directory.
+  //
+  // The next step, which hasn't been implemented yet, is to provide a fast
+  // means of mapping a directory name, or for that matter an arbitrary
+  // filename, to its location in the index file.  At that point navigation
+  // within an index can become as fast as the lookup mechanism.
+  for(list<string>::const_iterator it = dirs.begin();
+      it != dirs.end();
+      ++it)
+    backup_dir(root, *it, index);
 }
 
 /*
