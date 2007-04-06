@@ -233,16 +233,17 @@ static void backup_dir(const string &root, const string &dir,
           ++hints_used;
         } else {
           hashfile(hostfs, fullname, h, sb.st_size >= MINMAP);
-          if(hints) {
-            // If we're saving hints, stash this one
-            newhints->putf("name=%s&%s=%s&ctime=%llu&mtime=%llu&size=%llu\n",
-                           urlencode(fullname).c_str(),
-                           HASH_NAME,
-                           hexencode(h, HASH_SIZE).c_str(),
-                           (unsigned long long)sb.st_ctime,
-                           (unsigned long long)sb.st_mtime,
-                           (unsigned long long)sb.st_size);
-          }
+        }
+        if(hints) {
+          // If we're saving hints, stash this one (regardless of whether we
+          // hashed or not!)
+          newhints->putf("name=%s&%s=%s&ctime=%llu&mtime=%llu&size=%llu\n",
+                         urlencode(fullname).c_str(),
+                         HASH_NAME,
+                         hexencode(h, HASH_SIZE).c_str(),
+                         (unsigned long long)sb.st_ctime,
+                         (unsigned long long)sb.st_mtime,
+                         (unsigned long long)sb.st_size);
         }
         // see if we've got it
         if(!inrepo->has(h)) {
