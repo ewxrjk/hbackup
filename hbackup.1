@@ -191,6 +191,14 @@ system with a different filename encoding.
 If a character cannot be converted, or if it is corrupted, then it
 will be replaced with one or more question marks.
 .TP
+.B --hint-file \fIFILENAME
+.RB ( nhbackup
+only).
+.IP
+Use \fIFILENAME\fR to store hints.  These record the name, size,
+timestamp and hash of each file hashed during a backup, and are used
+to avoid re-hashing files when they have not changed.
+.TP
 .B --help
 Display a usage message.
 .SH EXAMPLES

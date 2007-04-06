@@ -99,6 +99,7 @@ extern unsigned long long new_hashes;
 extern unsigned long long hash_mmap;
 extern unsigned long long hash_read;
 extern unsigned long long small_files;
+extern unsigned long long hints_used;
 
 extern unsigned long long errors;       // error count
 extern unsigned long long warnings;     // warning count
@@ -520,6 +521,7 @@ extern const char *sftpserver;
 
 extern Filesystem *hostfs, *backupfs;
 extern const char *from_encoding, *to_encoding;
+extern string hintfile;
 
 // Utilities ------------------------------------------------------------------
 

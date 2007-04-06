@@ -6,3 +6,4 @@ version.cc
 *.tar.bz2
 TAGS
 ktrace.out
+.gdb_history

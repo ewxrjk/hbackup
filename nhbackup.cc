@@ -44,6 +44,7 @@ static const struct option longopts[] = {
   { "to-encoding", required_argument, 0, 't' },
   { "verbose", no_argument, 0, 'v' },
   { "posix-rename", no_argument, 0, 256 },
+  { "hint-file", required_argument, 0, 'H' },
   { "version", no_argument, 0, 'V' },
   { "help", no_argument, 0, 'h' },
   { 0, 0, 0, 0 }
@@ -75,6 +76,7 @@ static void help() {
             "  -f, --from-encoding ENCODING\n"
             "  -t, --to-encoding ENCODING\n"
             "                         Convert filenames (--restore)\n"
+            "  -H, -hint-file PATH    Load/save hints (--backup)\n"
             "  -v, --verbose          Verbose mode\n"
             "  -h, --help             Display usage message\n"
             "  -V, --version          Display version string\n") < 0)
@@ -96,7 +98,8 @@ int main(int argc, char **argv) {
   assert('a' == 97);
   assert('A' == 65);
   assert(UCHAR_MAX == 255);
-  while((n = getopt_long(argc, argv, "brcCR:I:F:xaX:Os:vhBSVzPf:t:",  longopts, 0))
+  while((n = getopt_long(argc, argv, "brcCR:I:F:xaX:Os:vhBSVzPf:t:H:",
+                         longopts, 0))
         >= 0) {
     switch(n) {
     case 'b': backup = 1; break;
@@ -119,6 +122,7 @@ int main(int argc, char **argv) {
     case 'P': permissions = 0; break;
     case 'f': from_encoding = optarg; break;
     case 't': to_encoding = optarg; break;
+    case 'H': hintfile = optarg; break;
     case 'h': help(); exit(0);
     case 'V': display_version(); exit(0);
     case 256: SftpFilesystem::posix_rename = true; break;
@@ -146,10 +150,12 @@ int main(int argc, char **argv) {
                 "New hashes:           %8llu\n"
                 "Files mapped to hash: %8llu\n"
                 "Files read to hash:   %8llu\n"
-                "Tiny files:           %8llu\n",
+                "Tiny files:           %8llu\n"
+                "Hints used:           %8llu\n",
                 total_regular_files, total_dirs, total_links, total_devs,
                 total_socks,
-                unknown_files, new_hashes, hash_mmap, hash_read, small_files);
+                unknown_files, new_hashes, hash_mmap, hash_read, small_files,
+                hints_used);
     } else if(restore) {
       do_restore();
       if(verbose)

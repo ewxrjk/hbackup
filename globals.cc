@@ -28,6 +28,7 @@ unsigned long long new_hashes;
 unsigned long long hash_mmap;
 unsigned long long hash_read;
 unsigned long long small_files;
+unsigned long long hints_used;
 
 unsigned long long errors;       // error count
 unsigned long long warnings;     // warning count
@@ -41,6 +42,8 @@ const char *sftpserver;
 
 Filesystem *hostfs = &local, *backupfs = &local;
 const char *from_encoding, *to_encoding;
+
+string hintfile;
 
 /*
 Local Variables:

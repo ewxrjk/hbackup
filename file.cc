@@ -33,7 +33,10 @@ int File::fill() {
 }
 
 File::~File() {
-  if(mode == writing) flush();
+  // If we are writing then the 'real' file object has already been destroyed,
+  // so it is too late to flush.
+  if(mode == writing) 
+    assert(next == buffer);
 }
   
 int File::readbytes(void */*buf*/, int /*space*/) {

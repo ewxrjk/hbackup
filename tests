@@ -26,6 +26,17 @@ dotests() {
   ${what} --repo ${repo} --index `pwd`/,test/h1 --root ,test/r1 --restore
   diff -ruN ,test/tree ,test/r1
 
+  echo backup again now hints are established
+  sleep 1			# give clock a chance to change
+  touch ,test/tree/*.cc		# throw some timestamps off
+  ${what} --repo ${repo} --index `pwd`/,test/h3 --root ,test/tree --backup
+  echo verify hinted version
+  ${what} --repo ${repo} --index `pwd`/,test/h3 --verify 
+  mkdir ,test/r3
+  echo restore hinted version
+  ${what} --repo ${repo} --index `pwd`/,test/h3 --root ,test/r3 --restore
+  diff -ruN ,test/tree ,test/r3
+
   echo Delete some files and check that backup + restore works
   rm ,test/tree/*.cc
   echo backup
@@ -43,6 +54,7 @@ dotests() {
 
   rm -rf ,test/r1
   rm -rf ,test/r2
+  rm -rf ,test/r3
 
   echo The restore should still work because only duplicated files deleted
   mkdir ,test/r1
@@ -111,12 +123,12 @@ treetest() {
 # TODO:
 #   - test error behaviour
 #   - test unique features of each script
-#   - test remote filesystem support
 #   - ...
 
 dotests hbackup
 dotests nhbackup
 dotests "nhbackup --sftp localhost"
+dotests "nhbackup --verbose --hint-file ,test/hints"
 treetest
 
 echo
