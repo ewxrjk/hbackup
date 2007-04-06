@@ -46,6 +46,7 @@ struct hint {
 };
 
 static map<string,hint> *hints;
+static File *newhints;
 
 static void load_hints() {
   if(!local.exists(hintfile))
@@ -69,31 +70,6 @@ static void load_hints() {
   delete f;
 }
 
-static void save_hints() {
-  if(verbose)
-    fprintf(stderr, "Saving hints to %s\n", hintfile.c_str());
-  const string tmpfile = hintfile + ".new";
-  File *f = local.open(tmpfile, Overwrite);
-  
-  for(map<string,hint>::const_iterator it = hints->begin();
-      it != hints->end();
-      ++it) {
-    const string &name = it->first;
-    const hint &h = it->second;
-    f->putf("name=%s&%s=%s&ctime=%llu&mtime=%llu&size=%llu\n",
-            urlencode(name).c_str(),
-            HASH_NAME,
-            hexencode(h.hash, HASH_SIZE).c_str(),
-            (unsigned long long)h.statdata.st_ctime,
-            (unsigned long long)h.statdata.st_mtime,
-            (unsigned long long)h.statdata.st_size);
-  }
-  f->put("[end]\n");
-  f->flush();
-  delete f;
-  local.rename(tmpfile, hintfile);
-}
-
 // Backup ---------------------------------------------------------------------
 
 static HashSet *inrepo;                 // hashes known to be in repo
@@ -102,6 +78,8 @@ static void backup_dir(const string &root, const string &dir,
 
 // Perform a backup
 void do_backup() {
+  string newhintfile;
+
   if(repo == "") fatal("no repository specified");
   if(root == "") fatal("no root specified");
   if(indexfile == "") fatal("no index specified");
@@ -114,6 +92,8 @@ void do_backup() {
   if(hintfile != "") {
     hints = new map<string,hint>;
     load_hints();
+    newhintfile = hintfile + ".tmp";
+    newhints = local.open(newhintfile, Overwrite);
   }
   File *o = backupfs->open(overwrite_index ? indexfile : indexfile + ".tmp",
                            Overwrite);
@@ -122,8 +102,12 @@ void do_backup() {
   o->flush();
   delete o;
   
-  if(hints)
-    save_hints();
+  if(hints) {
+    newhints->put("[end]\n");
+    newhints->flush();
+    delete newhints;
+    local.rename(newhintfile, hintfile);
+  }
   
   if(!overwrite_index) backupfs->rename(indexfile + ".tmp", indexfile);
 }
@@ -251,12 +235,13 @@ static void backup_dir(const string &root, const string &dir,
           hashfile(hostfs, fullname, h, sb.st_size >= MINMAP);
           if(hints) {
             // If we're saving hints, stash this one
-            struct hint hh;
-            memcpy(hh.hash, h, HASH_SIZE);
-            hh.statdata.st_mtime = sb.st_mtime;
-            hh.statdata.st_ctime = sb.st_ctime;
-            hh.statdata.st_size = sb.st_size;
-            (*hints)[fullname] = hh;
+            newhints->putf("name=%s&%s=%s&ctime=%llu&mtime=%llu&size=%llu\n",
+                           urlencode(fullname).c_str(),
+                           HASH_NAME,
+                           hexencode(h, HASH_SIZE).c_str(),
+                           (unsigned long long)sb.st_ctime,
+                           (unsigned long long)sb.st_mtime,
+                           (unsigned long long)sb.st_size);
           }
         }
         // see if we've got it
