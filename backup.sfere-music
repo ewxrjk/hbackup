@@ -7,13 +7,14 @@ volume=/usb
 setup
 
 echo "--- Saving /music"
-snapshot mp3 \
+snapshot music \
   nhbackup --repo $volume \
 	  --index $today/music \
-	  --root /snap/mp3 \
+	  --root /snap/music \
 	  --one-file-system \
 	  --verbose \
-          --hint-file /space/root/hints.mp3 \
+          --exclude '^\.Windows-Friendly' \
+          --hint-file /space/root/hints.music \
 	  --backup
 echo
 
