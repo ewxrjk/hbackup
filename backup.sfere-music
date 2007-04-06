@@ -13,6 +13,7 @@ snapshot mp3 \
 	  --root /snap/mp3 \
 	  --one-file-system \
 	  --verbose \
+          --hint-file /space/root/hints.mp3 \
 	  --backup
 echo
 
