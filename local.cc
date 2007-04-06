@@ -35,6 +35,7 @@ LocalFile::LocalFile(const string &path_, OpenMode mode) :
   }
   if((fd = open(path_.c_str(), m, 0666)) < 0)
     throw FileError("opening", path, errno);
+  fprintf(stderr, "opened a localfile %s\n", path.c_str());
 }
 
 LocalFile::~LocalFile() {
@@ -49,7 +50,8 @@ int LocalFile::readbytes(void *buf, int space) {
 
 void LocalFile::writebytes(const void *buf, int nbytes) {
   int n, written = 0;
-  
+
+  fprintf(stderr,  "write %d bytes to %s\n", nbytes, path.c_str());
   while(written < nbytes) {
     if((n = write(fd, (const char *)buf + written, nbytes)) < 0)
       throw FileError("writing", path, errno);

@@ -4,3 +4,5 @@ recodetest
 sha1test
 version.cc
 *.tar.bz2
+TAGS
+ktrace.out

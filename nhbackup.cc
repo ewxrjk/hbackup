@@ -44,6 +44,7 @@ static const struct option longopts[] = {
   { "to-encoding", required_argument, 0, 't' },
   { "verbose", no_argument, 0, 'v' },
   { "posix-rename", no_argument, 0, 256 },
+  { "hint-file", required_argument, 0, 'H' },
   { "version", no_argument, 0, 'V' },
   { "help", no_argument, 0, 'h' },
   { 0, 0, 0, 0 }
@@ -96,7 +97,8 @@ int main(int argc, char **argv) {
   assert('a' == 97);
   assert('A' == 65);
   assert(UCHAR_MAX == 255);
-  while((n = getopt_long(argc, argv, "brcCR:I:F:xaX:Os:vhBSVzPf:t:",  longopts, 0))
+  while((n = getopt_long(argc, argv, "brcCR:I:F:xaX:Os:vhBSVzPf:t:H:",
+                         longopts, 0))
         >= 0) {
     switch(n) {
     case 'b': backup = 1; break;
@@ -119,6 +121,7 @@ int main(int argc, char **argv) {
     case 'P': permissions = 0; break;
     case 'f': from_encoding = optarg; break;
     case 't': to_encoding = optarg; break;
+    case 'H': hintfile = optarg; break;
     case 'h': help(); exit(0);
     case 'V': display_version(); exit(0);
     case 256: SftpFilesystem::posix_rename = true; break;

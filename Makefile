@@ -7,6 +7,7 @@ LIBOBJECT=exceptions.${O} utils.${O} hash.${O} file.${O} \
 	globals.${O} local.${O}	exclude.${O} backup.${O} restore.${O} \
 	verify.${O} cleanup.${O} sftp.${O} version.${O} speedtest.${O} \
 	sha1.${O} filesystem.${O} recode.${O} ${PLATOBJS}
+ALLOBJECT=${LIBOBJECT} nhbackup.${O} sha1test.${O}
 VERSION=0.1+
 
 hostname:=$(shell uname -n|sed 's/\..*//')
@@ -29,7 +30,7 @@ sha1test${EXE}: sha1test.${O} sha1.${O}
 recodetest${EXE}: recodetest.${O} ${LIBOBJECT}
 	${CXX} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ $(LIBS)
 
-${OBJECT}: nhbackup.h
+${ALLOBJECT}: nhbackup.h sha1.h
 
 ${srcdir}/version.cc: ${srcdir}/Makefile
 	echo '#include "nhbackup.h"' > ${srcdir}/version.cc.tmp

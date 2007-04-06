@@ -1,5 +1,6 @@
 #! /bin/bash
 set -e
+set -x
 
 dotests() {
   local what=$1
@@ -117,6 +118,7 @@ treetest() {
 dotests hbackup
 dotests nhbackup
 dotests "nhbackup --sftp localhost"
+dotests "nhbackup --hint-file ,test/hints"
 treetest
 
 echo
