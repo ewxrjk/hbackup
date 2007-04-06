@@ -7,6 +7,15 @@ on Linux and Mac OS X.
 
 There are currently two command tools provided: a Python script called
 hbackup, and a C++ program called nhbackup.
+
+
+Installation
+------------
+
+   make
+   make install         # as root
+
+See 'man hbackup' for documentation.
    
 
 How it works
@@ -75,6 +84,9 @@ Technical Difficulties
    install the resulting SFTP server in /usr/local/bin, and use the
    --sftp-server option to nhbackup to access it.
 
+   A further alternative is to use an SFTP server that supports the
+   posix-rename extension.
+
 2. Mac OS X is capable of returning filenames from readdir() than
    cannot then be accessed.  Currently hbackup will fail entirely if
    this happens.  nhbackup will skip such files.
@@ -96,7 +108,7 @@ http://www.chiark.greenend.org.uk/mailman/listinfo/sgo-software-announce
 Author
 ------
 
-hbackup is (c) 2006 Richard Kettlewell.
+hbackup is (c) 2006, 2007 Richard Kettlewell.
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

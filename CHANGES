@@ -1,0 +1,11 @@
+Changes in version 0.2
+======================
+
+   * The order of index files is now normalised, making it easier to
+     compare them.
+
+   * New --hint-file option uses filesystem information to record
+     hashes, removing the need to rehash large files.  This can
+     significantly speed up some backups.
+
+   * Various bug fixes.
