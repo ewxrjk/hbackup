@@ -42,8 +42,6 @@ const char *sftpserver;
 Filesystem *hostfs = &local, *backupfs = &local;
 const char *from_encoding, *to_encoding;
 
-string hintfile;
-
 /*
 Local Variables:
 c-basic-offset:2

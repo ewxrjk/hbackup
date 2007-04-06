@@ -186,7 +186,7 @@ protected:
   virtual int readbytes(void *buf, int space);
   // Read up to SPACE bytes.  Return actual number read.
 
-  virtual void writebytes(const void *buf, int nbytes) = 0;
+  virtual void writebytes(const void *buf, int nbytes);
   // Write NBYTES.  Errors might be deferred until you call synchronize().
 
   virtual void synchronize();
@@ -520,7 +520,6 @@ extern const char *sftpserver;
 
 extern Filesystem *hostfs, *backupfs;
 extern const char *from_encoding, *to_encoding;
-extern string hintfile;
 
 // Utilities ------------------------------------------------------------------
 

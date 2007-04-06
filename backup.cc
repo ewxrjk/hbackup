@@ -38,61 +38,6 @@
  */
 #define STORE_LIMIT 256
 
-// Hints ----------------------------------------------------------------------
-
-struct hint {
-  uint8_t hash[HASH_SIZE];
-  struct stat statdata;
-};
-
-static map<string,hint> *hints;
-
-static void load_hints() {
-  if(!local.exists(hintfile))
-     return;
-  if(verbose)
-    fprintf(stderr, "Loading hints from %s\n", hintfile.c_str());
-  File *f = local.open(hintfile, ReadOnly);
-  map<string,string> hintdetails;
-
-  assert(hints != 0);  
-  while(readIndexLine(f, hintdetails)) {
-    const string name = hintdetails["name"];
-    struct hint h;
-
-    hashdecode(hintdetails[HASH_NAME], h.hash);
-    h.statdata.st_ctime = strtoull(hintdetails["ctime"].c_str(), 0, 10);
-    h.statdata.st_mtime = strtoull(hintdetails["mtime"].c_str(), 0, 10);
-    h.statdata.st_size = strtoull(hintdetails["size"].c_str(), 0, 10);
-    (*hints)[name] = h;
-  }
-  delete f;
-}
-
-static void save_hints() {
-  if(verbose)
-    fprintf(stderr, "Saving hints to %s\n", hintfile.c_str());
-  const string tmpfile = hintfile + ".new";
-  File *f = local.open(tmpfile, Overwrite);
-  
-  for(map<string,hint>::const_iterator it = hints->begin();
-      it != hints->end();
-      ++it) {
-    const string &name = it->first;
-    const hint &h = it->second;
-    f->putf("name=%s&%s=%s&ctime=%llu&mtime=&llu&size=%llu\n",
-            urlencode(name).c_str(),
-            HASH_NAME,
-            hexencode(h.hash, HASH_SIZE).c_str(),
-            (unsigned long long)h.statdata.st_ctime,
-            (unsigned long long)h.statdata.st_mtime,
-            (unsigned long long)h.statdata.st_size);
-  }
-  f->put("[end]\n");
-  delete f;
-  local.rename(tmpfile, hintfile);
-}
-
 // Backup ---------------------------------------------------------------------
 
 static HashSet *inrepo;                 // hashes known to be in repo
@@ -104,25 +49,17 @@ void do_backup() {
   if(repo == "") fatal("no repository specified");
   if(root == "") fatal("no root specified");
   if(indexfile == "") fatal("no index specified");
-
   assert(hostfs == &local);             // remote not supported (yet)
   if(!overwrite_index && backupfs->exists(indexfile))
     fatal("index file %s already exists", indexfile.c_str());
   if(!inrepo)
     inrepo = new HashSet();
-  if(hintfile != "") {
-    hints = new map<string,hint>;
-    load_hints();
-  }
   File *o = backupfs->open(overwrite_index ? indexfile : indexfile + ".tmp",
                            Overwrite);
   backup_dir(root, ".", o);
   o->put("[end]\n");
   o->flush();
   delete o;
-  
-  if(hints)
-    save_hints();
   
   if(!overwrite_index) backupfs->rename(indexfile + ".tmp", indexfile);
 }
@@ -236,27 +173,8 @@ static void backup_dir(const string &root, const string &dir,
       } else {
         // The file is large so we store it in the filesystem by hash.
         uint8_t h[HASH_SIZE];
-        map<string,hint>::const_iterator it;
 
-        if(hints
-           && (it = hints->find(fullname)) != hints->end()
-           && it->second.statdata.st_size == sb.st_size
-           && it->second.statdata.st_mtime == sb.st_mtime
-           && it->second.statdata.st_ctime == sb.st_ctime) {
-          // file hasn't changed since last time we hash it
-          memcpy(h, it->second.hash, HASH_SIZE);
-        } else {
-          hashfile(hostfs, fullname, h, sb.st_size >= MINMAP);
-          if(hints) {
-            // If we're saving hints, stash this one
-            struct hint hh;
-            memcpy(hh.hash, h, HASH_SIZE);
-            hh.statdata.st_mtime = sb.st_mtime;
-            hh.statdata.st_ctime = sb.st_ctime;
-            hh.statdata.st_size = sb.st_size;
-            (*hints)[name] = hh;
-          }
-        }
+        hashfile(hostfs, fullname, h, sb.st_size >= MINMAP);
         // see if we've got it
         if(!inrepo->has(h)) {
           // We don't know for sure that the repo already has this file.  Check
