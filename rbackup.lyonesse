@@ -33,24 +33,24 @@ snapshot usr \
 	  --backup
 echo
 
-echo "--- Saving /export"
-snapshot export \
+echo "--- Saving /home"
+snapshot home \
   nhbackup --repo $volume \
           --sftp $userhost \
           --posix-rename \
-	  --index $today/export \
-	  --root /export \
+	  --index $today/home \
+	  --root /home \
 	  --one-file-system \
 	  --verbose \
-	  --exclude '^home/.*/Desktop/Trash$' \
-	  --exclude '^home/.*/.thumbnails$' \
-	  --exclude '^home/.*/.xvpics$' \
-	  --exclude '^home/.*/.arch-revision-library$' \
-	  --exclude '^home/.*/++pristine-trees$' \
-	  --exclude '^home/.*/.mozilla/*/Cache$' \
-	  --exclude '^home/.*/.kde/share/cache$' \
-	  --exclude '^home/.*/.ccache$' \
-          --exclude '^home/[^/]*/jack$' \
+	  --exclude '^.*/Desktop/Trash$' \
+	  --exclude '^.*/.thumbnails$' \
+	  --exclude '^.*/.xvpics$' \
+	  --exclude '^.*/.arch-revision-library$' \
+	  --exclude '^.*/++pristine-trees$' \
+	  --exclude '^.*/.mozilla/*/Cache$' \
+	  --exclude '^.*/.kde/share/cache$' \
+	  --exclude '^.*/.ccache$' \
+          --exclude '^[^/]*/jack$' \
 	  --backup
 echo
 
