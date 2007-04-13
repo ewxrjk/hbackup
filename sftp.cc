@@ -506,8 +506,18 @@ void SftpFilesystem::rename(const string &oldpath, const string &newpath) {
   send(cmd);
   out->flush();
 
-  // Synchronously await a reply
-  check("renaming", oldpath, id);
+  try {
+    // Synchronously await a reply
+    check("renaming", oldpath, id);
+  } catch(SftpFileError &e) {
+    // posix-rename might not be supported
+    if(posix_rename && e.status == SSH_FX_OP_UNSUPPORTED) {
+      posix_rename = false;
+      rename(oldpath, newpath);
+    } else
+      throw;
+  }
+
 }
 
 void SftpFilesystem::remove(const string &path) {
@@ -841,7 +851,7 @@ void SftpFilesystem::prefigure_exists(const string &path) {
   existence_inflight.push_back(exists_inflight(id, path));
 }
 
-bool SftpFilesystem::posix_rename;
+bool SftpFilesystem::posix_rename = true;
 
 /*
 Local Variables:
