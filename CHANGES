@@ -8,4 +8,7 @@ Changes in version 0.2
      hashes, removing the need to rehash large files.  This can
      significantly speed up some backups.
 
+   * When backing up, hashes are checked for in the repository
+     asynchronously.
+
    * Various bug fixes.

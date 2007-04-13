@@ -112,6 +112,12 @@ void do_backup() {
   if(!overwrite_index) backupfs->rename(indexfile + ".tmp", indexfile);
 }
 
+struct hashable {
+  const string path;
+  const string hp;
+  hashable(const string &p, const string &h): path(p), hp(h) {}
+};
+
 // Back up DIR
 static void backup_dir(const string &root, const string &dir,
                        File *index) {
@@ -120,6 +126,7 @@ static void backup_dir(const string &root, const string &dir,
   map<string,struct stat> s;
   const string fulldir = root + (dir == "." ? "" : "/" + dir);
   bool first = true;
+  list<hashable> hashables;
   
   hostfs->contents(fulldir, c);
   // preallocate space for list of filenames
@@ -250,29 +257,8 @@ static void backup_dir(const string &root, const string &dir,
           // We don't know for sure that the repo already has this file.  Check
           // it directly.
           const string hp = repo + "/" + HASH_NAME + "/" + hashpath(h);
-          if(!backupfs->exists(hp)) {
-            // The repo doesn't have this file.  Copy it in.
-            File *f = hostfs->open(fullname, ReadOnly), *dst;
-            int n;
-            static char buffer[4096];
-
-            // In the long term the directories will usually exist, so try for
-            // the file open first.
-            try {
-              dst = backupfs->open(hp + ".tmp", Overwrite);
-            } catch(FileError &e) {
-              if(e.error() != ENOENT) throw;
-              backupfs->makedirs(string(hp, 0, hp.rfind('/')));
-              dst = backupfs->open(hp + ".tmp", Overwrite);
-            }
-            while((n = f->getbytes(buffer, sizeof buffer, false)))
-              dst->put(buffer, n);
-            dst->flush();
-            delete f;
-            delete dst;
-            backupfs->rename(hp + ".tmp", hp);
-            ++new_hashes;
-          }
+          backupfs->prefigure_exists(hp);
+          hashables.push_back(hashable(fullname, hp));
           // The repo now has the file either way
           inrepo->insert(h);
         }
@@ -306,6 +292,46 @@ static void backup_dir(const string &root, const string &dir,
     } else if(S_ISSOCK(sb.st_mode)) {
       index->put("&type=socket\n");
       ++total_socks;
+    }
+  }
+  // Add any new hashes we need.  For an SFTP filesystem the existence tests
+  // will have be "in flight" and so we save the round trip; not much of a
+  // saving if we do in fact copy the file but a significant one in the case
+  // that we don't.
+  for(list<hashable>::const_iterator it = hashables.begin();
+      it != hashables.end();
+      ++it) {
+    if(!backupfs->exists(it->hp)) {
+      const string &tmpname = it->hp + ".tmp";
+      // The repo doesn't have this file.  Copy it in.
+      File *f = hostfs->open(it->path, ReadOnly), *dst;
+      int n;
+      static char buffer[4096];
+      
+      // In the long term the directories will usually exist, so try for
+      // the file open first.
+      try {
+        dst = backupfs->open(tmpname, Overwrite);
+      } catch(FileError &e) {
+        if(e.error() != ENOENT) throw;
+        backupfs->makedirs(string(it->hp, 0, it->hp.rfind('/')));
+        // TODO use dirname() above
+        dst = backupfs->open(tmpname, Overwrite);
+      }
+      while((n = f->getbytes(buffer, sizeof buffer, false)))
+        dst->put(buffer, n);
+      // TODO hash the data on the way out so we can guarantee to only write
+      // correct hashes.  This will cause backups of unstable filesystems to
+      // fail occasionally but that's better than writing a false hash into the
+      // repo.  This is more of an issue than it was since there is now a much
+      // larger gap between the two scans of the file.
+      //
+      // (You still want to quiesce filesystems for backup anyway.)
+      dst->flush();
+      delete f;
+      delete dst;
+      backupfs->rename(tmpname, it->hp);
+      ++new_hashes;
     }
   }
   // And now deal with the subdirectories.  The consequence of doing the
