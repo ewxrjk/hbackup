@@ -15,6 +15,7 @@ snapshot music \
 	  --verbose \
           --exclude '^\.Windows-Friendly' \
           --hint-file /space/root/hints.music \
+          --no-recheck-hash \
 	  --backup
 echo
 

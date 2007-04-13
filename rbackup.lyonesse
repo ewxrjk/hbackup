@@ -30,6 +30,7 @@ snapshot usr \
 	  --root /snap/usr \
 	  --one-file-system \
 	  --verbose \
+          --no-recheck-hash \
 	  --backup
 echo
 
@@ -51,6 +52,7 @@ snapshot home \
 	  --exclude '^.*/.kde/share/cache$' \
 	  --exclude '^.*/.ccache$' \
           --exclude '^[^/]*/jack$' \
+          --no-recheck-hash \
 	  --backup
 echo
 
@@ -73,6 +75,7 @@ snapshot var \
 	  --exclude '^lib/apt' \
 	  --exclude '^spool/usman2' \
 	  --exclude '^lib/usman/cache' \
+          --no-recheck-hash \
 	  --backup
 echo
 

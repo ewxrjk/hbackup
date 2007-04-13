@@ -44,6 +44,7 @@ snapshot home \
 	  --exclude '^[^/]*/.kde/share/cache$' \
 	  --exclude '^[^/]*/.ccache$' \
           --exclude '^[^/]*/jack$' \
+          --no-recheck-hash \
 	  --backup
 echo
 
@@ -75,6 +76,7 @@ snapshot var.spool.news \
 	  --root /snap/var.spool.news \
 	  --one-file-system \
 	  --verbose \
+          --no-recheck-hash \
 	  --backup
 echo
 
