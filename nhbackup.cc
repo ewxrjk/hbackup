@@ -44,6 +44,7 @@ static const struct option longopts[] = {
   { "to-encoding", required_argument, 0, 't' },
   { "verbose", no_argument, 0, 'v' },
   { "posix-rename", no_argument, 0, 256 },
+  { "no-recheck-hash", no_argument, 0, 257 },
   { "hint-file", required_argument, 0, 'H' },
   { "version", no_argument, 0, 'V' },
   { "help", no_argument, 0, 'h' },
@@ -126,6 +127,7 @@ int main(int argc, char **argv) {
     case 'h': help(); exit(0);
     case 'V': display_version(); exit(0);
     case 256: SftpFilesystem::posix_rename = true; break;
+    case 257: recheckhash = false; break;
     default: exit(-1);
     }
   }

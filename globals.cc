@@ -39,6 +39,7 @@ int permissions = 1;
 bool detectbogus;
 Exclusions exclusions;
 const char *sftpserver;
+bool recheckhash = true;
 
 Filesystem *hostfs = &local, *backupfs = &local;
 const char *from_encoding, *to_encoding;

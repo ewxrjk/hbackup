@@ -11,4 +11,9 @@ Changes in version 0.2
    * When backing up, hashes are checked for in the repository
      asynchronously.
 
+   * When copying a file into the repo, the data actually written is
+     hashed, to detect "underfoot" changes.  The check can be
+     suppressed by --no-recheck-hash, for the case where you know
+     there will be no change.
+
    * Various bug fixes.

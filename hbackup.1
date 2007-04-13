@@ -1,3 +1,4 @@
+
 .\" This file is part of hbackup.
 .\" Copyright (C) 2006, 2007 Richard Kettlewell
 .\"
@@ -198,6 +199,18 @@ only).
 Use \fIFILENAME\fR to store hints.  These record the name, size,
 timestamp and hash of each file hashed during a backup, and are used
 to avoid re-hashing files when they have not changed.
+.TP
+.B --no-recheck-hash
+.RB ( nhbackup
+only).
+.IP
+Don't recheck hashes when writing to the repository.
+.IP
+Normally \fBnhbackup\fR will rehash the data written to the repository
+in order to avoid writing a corrupt backup if a file changes contents
+during the backup.  However this can up to double the amount of
+hashing required (e.g. for an initial backup) and is a total waste of
+time if the backup is made off a read-only snapshot.
 .TP
 .B --help
 Display a usage message.

@@ -530,6 +530,7 @@ extern int permissions;
 extern bool detectbogus;
 extern Exclusions exclusions;
 extern const char *sftpserver;
+extern bool recheckhash;
 
 extern Filesystem *hostfs, *backupfs;
 extern const char *from_encoding, *to_encoding;

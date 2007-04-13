@@ -115,7 +115,10 @@ void do_backup() {
 struct hashable {
   const string path;
   const string hp;
-  hashable(const string &p, const string &h): path(p), hp(h) {}
+  uint8_t hash[HASH_SIZE];
+  hashable(const string &p, const string &h, uint8_t hash_[]): path(p), hp(h) {
+    memcpy(hash, hash_, HASH_SIZE);
+  }
 };
 
 // Back up DIR
@@ -258,7 +261,7 @@ static void backup_dir(const string &root, const string &dir,
           // it directly.
           const string hp = repo + "/" + HASH_NAME + "/" + hashpath(h);
           backupfs->prefigure_exists(hp);
-          hashables.push_back(hashable(fullname, hp));
+          hashables.push_back(hashable(fullname, hp, h));
           // The repo now has the file either way
           inrepo->insert(h);
         }
@@ -307,6 +310,7 @@ static void backup_dir(const string &root, const string &dir,
       File *f = hostfs->open(it->path, ReadOnly), *dst;
       int n;
       static char buffer[4096];
+      Hash hashctx;
       
       // In the long term the directories will usually exist, so try for
       // the file open first.
@@ -318,15 +322,16 @@ static void backup_dir(const string &root, const string &dir,
         // TODO use dirname() above
         dst = backupfs->open(tmpname, Overwrite);
       }
-      while((n = f->getbytes(buffer, sizeof buffer, false)))
+      while((n = f->getbytes(buffer, sizeof buffer, false))) {
         dst->put(buffer, n);
-      // TODO hash the data on the way out so we can guarantee to only write
-      // correct hashes.  This will cause backups of unstable filesystems to
-      // fail occasionally but that's better than writing a false hash into the
-      // repo.  This is more of an issue than it was since there is now a much
-      // larger gap between the two scans of the file.
-      //
-      // (You still want to quiesce filesystems for backup anyway.)
+        if(recheckhash)
+          hashctx.write(buffer, n);
+      }
+      if(recheckhash) {
+        const uint8_t *const actual_hash = hashctx.value();
+        if(memcmp(actual_hash, it->hash, HASH_SIZE))
+          fatal("%s changed hash between test and write", it->path.c_str());
+      }
       dst->flush();
       delete f;
       delete dst;
