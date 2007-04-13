@@ -634,14 +634,26 @@ void SftpFilesystem::mkdir(const string &path, mode_t mode) {
 }
 
 int SftpFilesystem::exists(const string &path) {
-  // TODO sends three commands when one would do
-  try {
-    type(path);
-  } catch(SftpFileError &e) {
-    if(e.error() == ENOENT) return false;
-    throw;
+  init();
+
+  // Read any pending existence information
+  while(!existence_inflight.empty()) {
+    const exists_inflight &e = existence_inflight.front();
+    string reply;
+    const uint8_t r = await(e.id, reply);
+    existence[e.path] = (r == SSH_FXP_ATTRS);
+    existence_inflight.pop_front();
   }
-  return true;
+  // Inspect the cache
+  const map<string,bool>::iterator it = existence.find(path);
+  if(it != existence.end()) {
+    const bool e = it->second;
+    existence.erase(it);
+    return e;
+  }
+  // No cached information
+  prefigure_exists(path);
+  return exists(path);
 }
 
 uint32_t SftpFilesystem::closehandle(const string &handle) {
@@ -810,11 +822,24 @@ bool SftpFilesystem::ready(uint32_t id) const {
 }
 
 uint32_t SftpFilesystem::newid() { 
-  if(id)
+  if(!id)
     id++;
   return id++;
 }
 
+void SftpFilesystem::prefigure_exists(const string &path) {
+  init();
+
+  string cmd;
+  const uint32_t id = newid();
+  assert(id != 0);
+  pack_uint8(cmd, SSH_FXP_STAT);
+  pack_uint32(cmd, id);
+  pack_string(cmd, path);
+  send(cmd);
+  out->flush();
+  existence_inflight.push_back(exists_inflight(id, path));
+}
 
 bool SftpFilesystem::posix_rename;
 

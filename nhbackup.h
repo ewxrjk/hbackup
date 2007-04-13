@@ -306,6 +306,9 @@ public:
   virtual void utimes(const string &path, time_t atime, time_t mtime);
   // set file times
 
+  virtual void prefigure_exists(const string &path);
+  // prefetch existence information
+
   // make PATH and its parent directories
   void makedirs(const string &path);
 };
@@ -361,6 +364,14 @@ class SftpFilesystem : public Filesystem {
   uint32_t id;
   map<uint32_t, string> replies;        // pending replies
   set<uint32_t> ignored;                // ignored IDs
+  struct exists_inflight {
+    uint32_t id;
+    string path;
+    inline exists_inflight(const uint32_t id_, const string &path_):
+      id(id_), path(path_) {}
+  };
+  list<exists_inflight> existence_inflight; // in-flight existence tests
+  map<string, bool> existence;          // cached existence information
 public:
   inline SftpFilesystem(const string &userhost_) :
     userhost(userhost_), in(0), out(0), pid(-1), id(0) {}
@@ -376,6 +387,7 @@ public:
   void contents(const string &path,
                 list<string> &c);
   Filetype type(const string &path);
+  void prefigure_exists(const string &path);
 
   static bool posix_rename;             // use remote posix-rename extension
 
