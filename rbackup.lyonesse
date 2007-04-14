@@ -13,7 +13,6 @@ echo "--- Saving /"
 setstatus \
 nhbackup --repo $volume \
         --sftp $userhost \
-        --posix-rename \
         --index $today/root \
         --root / \
         --one-file-system \
@@ -25,7 +24,6 @@ echo "--- Saving /usr"
 snapshot usr \
   nhbackup --repo $volume \
           --sftp $userhost \
-          --posix-rename \
 	  --index $today/usr \
 	  --root /snap/usr \
 	  --one-file-system \
@@ -38,7 +36,6 @@ echo "--- Saving /home"
 snapshot home \
   nhbackup --repo $volume \
           --sftp $userhost \
-          --posix-rename \
 	  --index $today/home \
 	  --root /home \
 	  --one-file-system \
@@ -60,7 +57,6 @@ echo "--- Saving /var"
 snapshot var \
   nhbackup --repo $volume \
           --sftp $userhost \
-          --posix-rename \
 	  --index $today/var \
 	  --root /var \
 	  --one-file-system \
@@ -84,7 +80,6 @@ echo "--- Saving /tsais"\
   setstatus \
   nhbackup --repo $volume \
           --sftp $userhost \
-          --posix-rename \
 	  --index $today/tsais \
 	  --root /tsais \
 	  --one-file-system \
