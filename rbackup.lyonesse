@@ -17,6 +17,7 @@ nhbackup --repo $volume \
         --root / \
         --one-file-system \
         --verbose \
+        --hint-file /space/root/hints.root \
         --backup
 echo
 
@@ -29,6 +30,7 @@ snapshot usr \
 	  --one-file-system \
 	  --verbose \
           --no-recheck-hash \
+          --hint-file /space/root/hints.usr \
 	  --backup
 echo
 
@@ -50,6 +52,7 @@ snapshot home \
 	  --exclude '^.*/.ccache$' \
           --exclude '^[^/]*/jack$' \
           --no-recheck-hash \
+          --hint-file /space/root/hints.home \
 	  --backup
 echo
 
@@ -72,6 +75,7 @@ snapshot var \
 	  --exclude '^spool/usman2' \
 	  --exclude '^lib/usman/cache' \
           --no-recheck-hash \
+          --hint-file /space/root/hints.var \
 	  --backup
 echo
 

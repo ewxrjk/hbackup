@@ -25,6 +25,7 @@ nhbackup --repo $volume \
 	--exclude '/.kde/share/cache$' \
 	--exclude '/.ccache$' \
 	--one-file-system \
+        --hint-file /space/root/hints.Users \
 	--verbose \
 	--backup 
 echo
@@ -36,6 +37,7 @@ nhbackup --repo $volume \
 	--index $today/local \
 	--root /local \
 	--verbose \
+        --hint-file /space/root/hints.local \
 	--backup 
 echo
 
@@ -46,6 +48,7 @@ nhbackup --repo $volume \
 	--index $today/etc \
 	--root /etc \
 	--verbose \
+        --hint-file /space/root/hints.etc \
 	--backup 
 echo
 
@@ -57,6 +60,7 @@ nhbackup --repo $volume \
 	--index $today/sw \
 	--root /sw \
 	--verbose \
+        --hint-file /space/root/hints.sw \
 	--backup 
 echo
 
