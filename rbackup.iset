@@ -1,0 +1,83 @@
+#! /bin/bash
+set -e
+
+. /usr/local/share/hbackup.sh
+
+sftpserver=/usr/local/bin/bodged-sftp-server
+userhost=rbackup@sfere
+volume=/usb
+setup
+
+echo "--- Saving /etc"
+setstatus \
+nhbackup --repo $volume \
+        --sftp $userhost \
+        --index $today/etc \
+        --root /etc \
+        --one-file-system \
+        --hint-file /space/root/hints.etc \
+        --verbose \
+        --backup
+echo
+
+echo "--- Saving /usr"
+setstatus \
+  nhbackup --repo $volume \
+          --sftp $userhost \
+	  --index $today/usr \
+	  --root /usr \
+	  --one-file-system \
+	  --verbose \
+          --no-recheck-hash \
+          --hint-file /space/root/hints.usr \
+	  --backup
+echo
+
+echo "--- Saving /home"
+setstatus \
+  nhbackup --repo $volume \
+          --sftp $userhost \
+	  --index $today/home \
+	  --root /home \
+	  --one-file-system \
+	  --verbose \
+	  --exclude '^.*/Desktop/Trash$' \
+	  --exclude '^.*/.thumbnails$' \
+	  --exclude '^.*/.xvpics$' \
+	  --exclude '^.*/.arch-revision-library$' \
+	  --exclude '^.*/++pristine-trees$' \
+	  --exclude '^.*/.mozilla/*/Cache$' \
+	  --exclude '^.*/.kde/share/cache$' \
+	  --exclude '^.*/.ccache$' \
+          --exclude '^[^/]*/jack$' \
+          --no-recheck-hash \
+          --hint-file /space/root/hints.home \
+	  --backup
+echo
+
+echo "--- Saving /var"
+setstatus \
+  nhbackup --repo $volume \
+          --sftp $userhost \
+	  --index $today/var \
+	  --root /var \
+	  --one-file-system \
+	  --verbose \
+	  --exclude '^cache$' \
+	  --exclude '^lock$' \
+	  --exclude '^log$' \
+	  --exclude '^run$' \
+	  --exclude '^tmp$' \
+	  --exclude '^spool/cups/tmp$' \
+	  --exclude '^account$' \
+	  --exclude '^lib/apt' \
+	  --exclude '^spool/usman2' \
+	  --exclude '^lib/usman/cache' \
+          --no-recheck-hash \
+          --hint-file /space/root/hints.var \
+	  --backup
+echo
+
+echo "--- Done"
+
+exit $status
