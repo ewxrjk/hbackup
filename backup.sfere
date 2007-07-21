@@ -53,7 +53,7 @@ echo
 
 # XXX would like to snapshot /var but crashes!
 echo "--- Saving /var"
-  setstatus \
+snapshot var \
   nhbackup --repo $volume \
 	  --index $today/var \
 	  --root /var \
