@@ -274,7 +274,12 @@ static void backup_dir(const string &root, const string &dir,
       index->put('\n');
       // Restore the atime
       if(preserve_atime) {
-        const struct timeval tv[2] = { sb.st_atime, sb.st_mtime };
+        struct timeval tv[2];
+
+        // TODO subsecond timestamps
+        memset(tv, 0, sizeof tv);
+        tv[0].tv_sec = sb.st_atime;
+        tv[1].tv_sec = sb.st_mtime;
 
         if(utimes(fullname.c_str(), tv) < 0)
           throw FileError("restoring access time", fullname, errno);
