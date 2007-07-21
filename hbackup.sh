@@ -17,7 +17,7 @@ snapshot() {
 
   # create a snapshot of the volume and mount it
   echo " - creating snapshot"
-  lvcreate --permission r --size 1000M --snapshot --name snap$what /dev/$hostname/$what
+  lvcreate --size 1000M --snapshot --name snap$what /dev/$hostname/$what
   echo " - mounting snapshot"
   mount /snap/$what
 
