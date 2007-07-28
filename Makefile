@@ -1,4 +1,3 @@
-
 srcdir=.
 PLATFORM:=$(shell uname -s)
 include ${srcdir}/makedefs.${PLATFORM}
