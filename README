@@ -12,6 +12,13 @@ hbackup, and a C++ program called nhbackup.
 Installation
 ------------
 
+You will need:
+   Python
+   A C++ compiler
+   PCRE  (Debian etch: libpcre3-dev)
+   iconv
+
+To build and install:
    make
    make install         # as root
 
