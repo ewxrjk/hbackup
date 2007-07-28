@@ -11,6 +11,8 @@ ALLOBJECT=${LIBOBJECT} nhbackup.${O} sha1test.${O}
 VERSION=0.1+
 
 hostname:=$(shell uname -n|sed 's/\..*//')
+DISTNAME=hbackup-anjou
+DISTDIR=${DISTNAME}-${VERSION}
 
 all: nhbackup${EXE} sha1test${EXE} recodetest${EXE}
 
@@ -57,32 +59,32 @@ clean:
 	rm -f *.${O} nhbackup
 
 dist:
-	rm -rf hbackup-${VERSION}
-	mkdir hbackup-${VERSION}
-	mkdir hbackup-${VERSION}/ChangeLog.d
-	cp ${srcdir}/Makefile hbackup-${VERSION}/.
-	cp ${srcdir}/*.cc hbackup-${VERSION}/.
-	cp ${srcdir}/*.h hbackup-${VERSION}/.
-	cp ${srcdir}/*.c hbackup-${VERSION}/.
-	cp ${srcdir}/README hbackup-${VERSION}/.
-	cp ${srcdir}/makedefs.Linux hbackup-${VERSION}/.
-	cp ${srcdir}/makedefs.Darwin hbackup-${VERSION}/.
-	cp ${srcdir}/makedefs.mingw hbackup-${VERSION}/.
-	cp ${srcdir}/hbackup ${srcdir}/hbackup.1 hbackup-${VERSION}/.
-	cp ${srcdir}/tests hbackup-${VERSION}/.
-	cp ${srcdir}/hbackup.sh ${srcdir}/backup.curator hbackup-${VERSION}/.
-	cp ${srcdir}/backup.lyonesse ${srcdir}/backup.sfere ${srcdir}/backup.kakajou ${srcdir}/backup.chymax hbackup-${VERSION}/.
-	cp ${srcdir}/rbackup.lyonesse ${srcdir}/rbackup.sfere ${srcdir}/rbackup.kakajou ${srcdir}/rbackup.chymax hbackup-${VERSION}/.
-	cp ${srcdir}/rbackup.iset hbackup-${VERSION}/.
-	cp ${srcdir}/openssh.patch hbackup-${VERSION}/.
-	cp ${srcdir}/ChangeLog.d/*[^~] hbackup-${VERSION}/ChangeLog.d/.
-	bzr log > hbackup-${VERSION}/ChangeLog.d/hbackup-bzr
-	tar cfj hbackup-${VERSION}.tar.bz2 hbackup-${VERSION}
-	rm -rf hbackup-${VERSION}
+	rm -rf ${DISTDIR}
+	mkdir ${DISTDIR}
+	mkdir ${DISTDIR}/ChangeLog.d
+	cp ${srcdir}/Makefile ${DISTDIR}/.
+	cp ${srcdir}/*.cc ${DISTDIR}/.
+	cp ${srcdir}/*.h ${DISTDIR}/.
+	cp ${srcdir}/*.c ${DISTDIR}/.
+	cp ${srcdir}/README ${DISTDIR}/.
+	cp ${srcdir}/makedefs.Linux ${DISTDIR}/.
+	cp ${srcdir}/makedefs.Darwin ${DISTDIR}/.
+	cp ${srcdir}/makedefs.mingw ${DISTDIR}/.
+	cp ${srcdir}/hbackup ${srcdir}/hbackup.1 ${DISTDIR}/.
+	cp ${srcdir}/tests ${DISTDIR}/.
+	cp ${srcdir}/hbackup.sh ${srcdir}/backup.curator ${DISTDIR}/.
+	cp ${srcdir}/backup.lyonesse ${srcdir}/backup.sfere ${srcdir}/backup.kakajou ${srcdir}/backup.chymax ${DISTDIR}/.
+	cp ${srcdir}/rbackup.lyonesse ${srcdir}/rbackup.sfere ${srcdir}/rbackup.kakajou ${srcdir}/rbackup.chymax ${DISTDIR}/.
+	cp ${srcdir}/rbackup.iset ${DISTDIR}/.
+	cp ${srcdir}/openssh.patch ${DISTDIR}/.
+	cp ${srcdir}/ChangeLog.d/*[^~] ${DISTDIR}/ChangeLog.d/.
+	bzr log > ${DISTDIR}/ChangeLog.d/${DISTNAME}-bzr
+	tar cfj ${DISTDIR}.tar.bz2 ${DISTDIR}
+	rm -rf ${DISTDIR}
 
 distcheck: dist
 	rm -rf ,distcheck
 	mkdir ,distcheck
-	cd ,distcheck && tar xfj ../hbackup-${VERSION}.tar.bz2
-	$(MAKE) -C ,distcheck/hbackup-${VERSION} srcdir=. check
+	cd ,distcheck && tar xfj ../${DISTDIR}.tar.bz2
+	$(MAKE) -C ,distcheck/${DISTDIR} srcdir=. check
 
