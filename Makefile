@@ -1,3 +1,4 @@
+
 srcdir=.
 PLATFORM:=$(shell uname -s)
 include ${srcdir}/makedefs.${PLATFORM}
@@ -9,8 +10,6 @@ LIBOBJECT=exceptions.${O} utils.${O} hash.${O} file.${O} \
 	sha1.${O} filesystem.${O} recode.${O} ${PLATOBJS}
 ALLOBJECT=${LIBOBJECT} nhbackup.${O} sha1test.${O}
 VERSION=0.1+
-
-hostname:=$(shell uname -n|sed 's/\..*//')
 
 all: nhbackup${EXE} sha1test${EXE} recodetest${EXE}
 
@@ -43,16 +42,6 @@ install:
 	install -m 644 ${srcdir}/hbackup.1 ${man1dir}/hbackup.1
 	install -m 755 nhbackup ${bindir}/nhbackup
 
-install-local: install
-	install -m 644 ${srcdir}/hbackup.sh ${prefix}/share/hbackup.sh
-	install -m 755 ${srcdir}/backup.${hostname} ${bindir}/backup
-	if [ -e ${srcdir}/rbackup.${hostname} ]; then \
-	  install -m 755 ${srcdir}/rbackup.${hostname} ${bindir}/rbackup;\
-	fi
-ifeq (${hostname},sfere)
-	install -m 755 ${srcdir}/backup.sfere-music ${bindir}/backup-music
-endif
-
 clean:
 	rm -f *.${O} nhbackup
 
@@ -70,10 +59,6 @@ dist:
 	cp ${srcdir}/makedefs.mingw hbackup-${VERSION}/.
 	cp ${srcdir}/hbackup ${srcdir}/hbackup.1 hbackup-${VERSION}/.
 	cp ${srcdir}/tests hbackup-${VERSION}/.
-	cp ${srcdir}/hbackup.sh ${srcdir}/backup.curator hbackup-${VERSION}/.
-	cp ${srcdir}/backup.lyonesse ${srcdir}/backup.sfere ${srcdir}/backup.kakajou ${srcdir}/backup.chymax hbackup-${VERSION}/.
-	cp ${srcdir}/rbackup.lyonesse ${srcdir}/rbackup.sfere ${srcdir}/rbackup.kakajou ${srcdir}/rbackup.chymax hbackup-${VERSION}/.
-	cp ${srcdir}/rbackup.iset hbackup-${VERSION}/.
 	cp ${srcdir}/openssh.patch hbackup-${VERSION}/.
 	cp ${srcdir}/ChangeLog.d/*[^~] hbackup-${VERSION}/ChangeLog.d/.
 	bzr log > hbackup-${VERSION}/ChangeLog.d/hbackup-bzr
