@@ -51,12 +51,11 @@ snapshot home \
 	  --backup
 echo
 
-# XXX would like to snapshot /var but crashes!
 echo "--- Saving /var"
 snapshot var \
   nhbackup --repo $volume \
 	  --index $today/var \
-	  --root /var \
+	  --root /snap/var \
 	  --one-file-system \
 	  --verbose \
 	  --exclude '^cache$' \
