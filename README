@@ -42,7 +42,7 @@ Some useful consequences of this design are:
 
  2) All backups to the same medium are incremental, for the same
     reason.  When you make a second backup, only the index and new
-    files need b e written to the backup medium.
+    files need be written to the backup medium.
 
  3) The demands on the backup filesystem are relatively light, and
     FAT32 will suffice.  This makes it easier to share backup devices
@@ -51,20 +51,6 @@ Some useful consequences of this design are:
 It should be said that a less useful consequence is that when you
 delete old indexes, the removal of files no longer referenced by any
 index is a relatively slow and expensive process.
-
-
-How to use it
--------------
-
-My nightly backups are organized as follows:
-
-   * I have a USB hard disk mounted on /usb.  It's formatted as FAT32.
-
-   * Local backups use the script backup.sfere, run nightly from cron.
-
-   * Remote backups from other hosts use the various rbackup.*
-     scripts.  These are invoked by SSH from the machine with the
-     backup device, to ensure that only backup is running at once.
 
 See the man page, hbackup.1, for command-line options etc.
 
