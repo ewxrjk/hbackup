@@ -144,9 +144,11 @@ treetest() {
 #   - test unique features of each script
 #   - ...
 
+SELF=${SELF:-$(hostname)}
+
 dotests hbackup
 dotests nhbackup
-dotests "nhbackup --sftp localhost"
+dotests "nhbackup --sftp $SELF"
 dotests "nhbackup --no-recheck-hash"
 dotests "nhbackup --verbose --hint-file ,test/hints"
 treetest
