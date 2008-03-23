@@ -1,7 +1,6 @@
 srcdir=.
 PLATFORM:=$(shell uname -s)
 include ${srcdir}/makedefs.${PLATFORM}
-SHELL=/bin/bash
 VPATH=.:${srcdir}
 LIBOBJECT=exceptions.${O} utils.${O} hash.${O} file.${O} \
 	globals.${O} local.${O}	exclude.${O} backup.${O} restore.${O} \
@@ -20,7 +19,7 @@ check: all
 	./sha1test
 	${srcdir}/hbackup --help > /dev/null
 	./nhbackup --help > /dev/null
-	srcdir=${srcdir} PATH=`pwd`:`cd ${srcdir} && pwd`:$$PATH tests
+	srcdir=${srcdir} PATH=`pwd`:`cd ${srcdir} && pwd`:$$PATH bash tests
 
 nhbackup${EXE}: nhbackup.${O} ${LIBOBJECT} 
 	${CXX} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ $(LIBS)

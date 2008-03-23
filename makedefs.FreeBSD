@@ -1,0 +1,16 @@
+# Make definitions for a Darwin build
+
+prefix=/usr/local
+bindir=${prefix}/bin
+mandir=${prefix}/man
+man1dir=${mandir}/man1
+CXX=g++ -Wall -W -Werror
+CC=cc -Wall -W  -Werror
+CPPFLAGS=-I/usr/local/include
+CXXFLAGS=-g -O2
+CFLAGS=-g -O2
+LDFLAGS=-L/usr/local/lib
+LIBS=-lpcre -liconv
+O=o
+EXE=
+PLATOBJS=
