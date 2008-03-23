@@ -36,10 +36,12 @@ Recode::~Recode() {
 string Recode::convert(const string &s) {
   if(!cd) return s;                     // not converting
 
-#ifdef __linux__
-  char *inbuf = (char *)s.data();       // stupid linux iconv
-#else
+#if BOGUS_ICONV
+  // FreeBSD is one of the few remaining const char ** holdouts
   const char *inbuf = s.data();
+#else
+  // POSIX says char **
+  char *inbuf = (char *)s.data();
 #endif
   size_t inbytesleft = s.size();
   string r;
