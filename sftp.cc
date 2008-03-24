@@ -423,9 +423,12 @@ void SftpFilesystem::connect() {
       close(inpipe[1]);
       close(outpipe[0]);
       close(outpipe[1]);
-      if(sftpserver)
-        execlp("ssh", "ssh", "-x", "-T", userhost.c_str(), sftpserver, (char *)0);
-      else
+      if(sftpserver) {
+        if(userhost != "<magic>")
+          execlp("ssh", "ssh", "-x", "-T", userhost.c_str(), sftpserver, (char *)0);
+        else
+          execlp(sftpserver, sftpserver, (char *)0);
+      } else
         execlp("ssh", "ssh", "-x", "-s", userhost.c_str(), "sftp", (char *)0);
       fatal("executing ssh client", strerror(errno));
     }

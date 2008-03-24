@@ -144,11 +144,26 @@ treetest() {
 #   - test unique features of each script
 #   - ...
 
-SELF=${SELF:-$(hostname)}
+for sftpserver in /usr/libexec/sftp-server \
+                  /usr/local/libexec/sftp-server \
+                  /usr/lib/openssh/sftp-server \
+                  /usr/local/lib/openssh/sftp-server \
+                  /usr/lib/sftp-server \
+                  /usr/local/lib/sftp-server \
+                  none; do
+  if [ -e $sftpserver ]; then
+    break
+  fi
+done
+if [ $sftpserver = none ]; then
+  echo >&2 CANNOT FIND AN SFTP SERVER
+  exit 1
+fi
+echo "Found SFTP server: $sftpserver"
 
 dotests hbackup
 dotests nhbackup
-dotests "nhbackup --sftp $SELF"
+dotests "nhbackup --sftp <magic> --sftp-server $sftpserver"
 dotests "nhbackup --no-recheck-hash"
 dotests "nhbackup --verbose --hint-file ,test/hints"
 treetest
