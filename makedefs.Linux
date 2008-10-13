@@ -4,8 +4,8 @@ prefix=/usr/local
 bindir=${prefix}/bin
 mandir=${prefix}/man
 man1dir=${mandir}/man1
-CXX=g++ -Wall -W -Werror
-CC=cc -Wall -W  -Werror
+CXX=g++ -Wall -W -Werror -D_FILE_OFFSET_BITS=64
+CC=cc -Wall -W  -Werror -D_FILE_OFFSET_BITS=64
 CPPFLAGS=
 CXXFLAGS=-g -O2
 CFLAGS=-g -O2
