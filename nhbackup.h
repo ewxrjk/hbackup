@@ -35,6 +35,7 @@
 #include <assert.h>
 #include <stdarg.h>
 #include <iconv.h>
+#include <cstring>
 
 #ifndef _WIN32
 #include <sys/mman.h>
@@ -48,6 +49,7 @@
 #include <list>
 #include <map>
 #include <set>
+#include <algorithm>
 
 #include "sha1.h"
 
