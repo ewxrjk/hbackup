@@ -12,13 +12,13 @@ libhbackup_a_SOURCES=exceptions.cc utils.cc hash.cc file.cc globals.cc	\
 	recode.cc nhbackup.h sha1.h
 
 nhbackup_SOURCES=nhbackup.cc
-nhbackup_LDADD=libhbackup.a $(LIBPCRE)
+nhbackup_LDADD=libhbackup.a $(LIBPCRE) $(LIBICONV)
 
 sha1test_SOURCES=sha1test.c
 sha1test_LDADD=libhbackup.a
 
 recodetest_SOURCES=recodetest.cc
-recodetest_LDADD=libhbackup.a
+recodetest_LDADD=libhbackup.a $(LIBICONV)
 
 ${srcdir}/version.cc: ${srcdir}/Makefile
 	echo '#include "nhbackup.h"' > ${srcdir}/version.cc.tmp

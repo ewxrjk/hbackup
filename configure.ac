@@ -24,9 +24,21 @@ AC_PROG_CXX
 AC_PROG_CC
 AC_PROG_RANLIB
 AC_SET_MAKE
+AC_PATH_PROG([FINK],[fink],[none],[$PATH:/sw/bin])
+if test "x$FINK" != xnone; then
+  AC_CACHE_CHECK([fink install directory],[rjk_cv_finkprefix],[
+    rjk_cv_finkprefix="`echo "$FINK" | sed 's,/bin/fink$,,'`"
+  ])
+  CPPFLAGS="${CPPFLAGS} -I ${rjk_cv_finkprefix}/include"
+  LDFLAGS="${LDFLAGS} -L${rjk_cv_finkprefix}/lib"
+fi
 AC_CHECK_LIB(pcre, pcre_compile,
 	     [AC_SUBST(LIBPCRE,[-lpcre])],
 	     [missing_libraries="$missing_libraries libpcre"])
+AC_CHECK_FUNC(iconv_open, [:],
+              [RJK_CHECK_LIB(iconv, iconv_open, [#include <iconv.h>],
+                            [AC_SUBST(LIBICONV,[-liconv])],
+                            [missing_functions="$missing_functions iconv_open"])])
 if test ! -z "$missing_libraries"; then
   AC_MSG_ERROR([missing libraries:$missing_libraries])
 fi
