@@ -57,7 +57,7 @@ dotests() {
   diff -ruN ,test/tree ,test/r3
 
   echo Delete some files and check that backup + restore works
-  rm ,test/tree/*.cc
+  rm -f ,test/tree/*.cc
   echo backup
   ${what} --repo ${repo} --index `pwd`/,test/h2 --root ,test/tree --backup
   mkdir ,test/r2
@@ -87,7 +87,7 @@ dotests() {
   ${what} --repo ${repo} --index `pwd`/,test/h2 --root ,test/r2 --restore
   diff -ruN ,test/tree ,test/r2
 
-  rm ,test/tree/d1/*.h
+  rm -f ,test/tree/d1/*.h
   echo backup
   ${what} --repo ${repo} --index `pwd`/,test/h1 --overwrite --root ,test/tree --backup
   echo Obsolete: ----
