@@ -77,6 +77,7 @@ pkg-hbackup: build
 	$(MAKE) DESTDIR=`pwd`/debian/hbackup installdirs install
 	gzip -9f debian/hbackup/usr/share/man/man*/*
 	ln -s hbackup.1.gz debian/hbackup/usr/share/man/man1/nhbackup.1.gz
+	strip --remove-section=.comment debian/hbackup/usr/bin/nhbackup
 	dpkg-shlibdeps -Tdebian/substvars.hbackup \
 		debian/hbackup/usr/bin/*
 	dpkg-gencontrol -isp -phbackup -Pdebian/hbackup -Tdebian/substvars.hbackup
