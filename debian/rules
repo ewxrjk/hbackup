@@ -80,6 +80,10 @@ pkg-hbackup: build
 	strip --remove-section=.comment debian/hbackup/usr/bin/nhbackup
 	dpkg-shlibdeps -Tdebian/substvars.hbackup \
 		debian/hbackup/usr/bin/*
+	cd debian/hbackup && \
+		find -name DEBIAN -prune -o -type f -print \
+			| sed 's/^\.\///' \
+			| xargs md5sum > DEBIAN/md5sums
 	dpkg-gencontrol -isp -phbackup -Pdebian/hbackup -Tdebian/substvars.hbackup
 	chown -R root:root debian/hbackup
 	chmod -R g-ws debian/hbackup
