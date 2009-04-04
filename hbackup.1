@@ -1,6 +1,5 @@
-
 .\" This file is part of hbackup.
-.\" Copyright (C) 2006, 2007 Richard Kettlewell
+.\" Copyright (C) 2006, 2007, 2009 Richard Kettlewell
 .\"
 .\" This program is free software; you can redistribute it and/or modify
 .\" it under the terms of the GNU General Public License as published by
@@ -22,11 +21,11 @@
 hbackup, nhbackup - back up one filesystem using another
 .SH SYNOPSIS
 .BR hbackup | nhbackup
-.BR --backup | --restore | --verify
+.BR \-\-backup | \-\-restore | \-\-verify
 .I OPTIONS
 .br
 .B hbackup
-.B --cleanup
+.B \-\-cleanup
 .I OPTIONS
 .IR FILENAME ...
 .SH DESCRIPTION
@@ -49,51 +48,51 @@ more convenient to satisfy).
 .SS "Mode Options"
 Exactly one mode option must always be specified.
 .TP
-.B --backup
+.B \-\-backup
 Copy files below the root directory into the repository and write an
 index file for them.
 .TP
-.B --restore
+.B \-\-restore
 Copy the files listed in the index file from the repository to the
 proper location below the root.
 .TP
-.B --verify
+.B \-\-verify
 Scan the index and checking that the files listed are in the
 repository.  This option is used to verify the integrity of a backup.
 .TP
-.B --cleanup
+.B \-\-cleanup
 Remove obsolete files.  In this case you should list all the index
 files that are not yet obsolete; any files not referred to by any of
 them will be listed to standard output.
 .IP
-This cannot be used in combination with \fB--sftp\fR.
+This cannot be used in combination with \fB\-\-sftp\fR.
 .SS Parameters
 .TP
-.B --repo \fIDIRECTORY
+.B \-\-repo \fIDIRECTORY
 Identifies the repository directory.  Backed up files will be stored
 in subdirectories of this directory, or restored from it.  Mandatory.
 .TP
-.B --index \fIFILENAME
+.B \-\-index \fIFILENAME
 Identifies the index file.  When backing up a new index file is
 written.  When restoring or verifying an existing one is read.  Mandatory for
-.BR --backup ,
-.B --restore
+.BR \-\-backup ,
+.B \-\-restore
 and
-.BR --verify .
+.BR \-\-verify .
 .TP
-.B --root \fIDIRECTORY
+.B \-\-root \fIDIRECTORY
 Identifies the root of the files to back up, or where to restore to.
 Files are stored with the root stripped off so they may be restored to
 a different location.
 .SS "Other Options"
 .TP
-.B --one-file-system
+.B \-\-one-file-system
 Do not cross file-system boundaries below the root.
 .TP
-.B --preserve-atime
+.B \-\-preserve-atime
 Restore the atime, i.e. the last read time, of each file.
 .TP
-.B --exclude \fIPATTERN
+.B \-\-exclude \fIPATTERN
 Exclude filenames matching \fIPATTERN\fR, which should be a filename
 glob pattern matching the whole path below the root, from the backup.
 .IP
@@ -110,17 +109,17 @@ excluded from the backup.
 .IP
 Restores and verifies are not affected.
 .TP
-.B --overwrite
+.B \-\-overwrite
 Overwrite index files rather.
 .TP
-.B --sftp \fR[\fIUSER\fB@\fR]\fIHOST
+.B \-\-sftp \fR[\fIUSER\fB@\fR]\fIHOST
 .RB ( hbackup
 only).
 .IP
 Access the repository (and index file) by sftp to \fIUSER\fB@\fIHOST\fR.
 See \fBSFTP\fR below.
 .TP
-.B --no-rename
+.B \-\-no-rename
 .RB ( hbackup
 only).
 .IP
@@ -130,43 +129,43 @@ in place.  This reduces reliability but is necessary to work around
 design flaws in SFTP which prevent this working.
 .IP
 If you use this option and a backup is interrupted then you should
-re-run the backup and immediately do a \fB--verify\fR when it
+re-run the backup and immediately do a \fB\-\-verify\fR when it
 completes, to check that no bad files have been left in the
 repository.
 .TP
-.B --sftp-server \fIPATH\fR
+.B \-\-sftp-server \fIPATH\fR
 .RB ( nhbackup
 only).
 .IP
 Specify an alternative path to the SFTP server.  This is used with a
 patched SFTP server that works around the problem described above
-under \fB--no-rename\fR.
+under \fB\-\-no-rename\fR.
 .IP
 See http://bugs.debian.org/352589 for more information.
 .TP
-.B --delete
+.B \-\-delete
 .RB ( nhbackup
 only).
 .IP
 Delete obsolete files if used with 
-.BR --cleanup .
+.BR \-\-cleanup .
 .TP
-.B --detect-bogus
+.B \-\-detect-bogus
 .RB ( nhbackup
 only).
 .IP
 With
-.BR --cleanup ,
+.BR \-\-cleanup ,
 check the hash of every file in the repo and list (or delete, with
-.BR --delete )
+.BR \-\-delete )
 any that are wrong.
 .IP
 With
-.BR --verify ,
+.BR \-\-verify ,
 check the hash of each file in the repo required by the index and
 delete any that are wrong.
 .TP
-.B --no-permissions
+.B \-\-no-permissions
 .RB ( nhbackup
 only).
 .IP
@@ -174,7 +173,7 @@ Don't set mode and ownership of restored files.  Used when restoring
 for content rather than to exactly restore a system.  Timestamps are
 still restored.
 .TP
-.B --from-encoding \fIENCODING \fB--to-encoding \fIENCODING
+.B \-\-from-encoding \fIENCODING \fB\-\-to-encoding \fIENCODING
 .RB ( nhbackup
 only).
 .IP
@@ -184,7 +183,7 @@ system with a different filename encoding.
 If a character cannot be converted, or if it is corrupted, then it
 will be replaced with one or more question marks.
 .TP
-.B --hint-file \fIFILENAME
+.B \-\-hint-file \fIFILENAME
 .RB ( nhbackup
 only).
 .IP
@@ -192,7 +191,7 @@ Use \fIFILENAME\fR to store hints.  These record the name, size,
 timestamp and hash of each file hashed during a backup, and are used
 to avoid re-hashing files when they have not changed.
 .TP
-.B --no-recheck-hash
+.B \-\-no-recheck-hash
 .RB ( nhbackup
 only).
 .IP
@@ -204,7 +203,7 @@ during the backup.  However this can up to double the amount of
 hashing required (e.g. for an initial backup) and is a total waste of
 time if the backup is made off a read-only snapshot.
 .TP
-.B --help
+.B \-\-help
 Display a usage message.
 .SH EXAMPLES
 All these examples assume that the user wants to back up \fB/home\fR
@@ -217,21 +216,21 @@ directory within that.  So index files are
 .SS "Backing Up"
 .PP
 .nf
-indexdir=/usb/indexes/$(date +%F)/$(uname -n)
-mkdir -p $indexdir
-nhbackup --repo /usb --index $indexdir/home --root /home --backup
+indexdir=/usb/indexes/$(date +%F)/$(uname \-n)
+mkdir \-p $indexdir
+nhbackup \-\-repo /usb \-\-index $indexdir/home \-\-root /home \-\-backup
 .fi
 .PP
 If the index file already exists the backup will fail.  Although this
 is convenient in some cases in others it is not what you want; if so,
 use
-.BR --overwrite .
+.BR \-\-overwrite .
 .SS "Verifying"
 To verify all that all index files can still be restored:
 .PP
 .nf
 for index in /usb/index/*/*/*; do
-  nhbackup --repo /usb --index $index --verify
+  nhbackup \-\-repo /usb \-\-index $index \-\-verify
 done
 .fi
 .PP
@@ -243,16 +242,16 @@ is likely to dominate unless you have a very slow CPU.)
 .B nhbackup
 can additionally delete any files required by the given index which
 are incorrect, using the
-.B --detect-bogus
+.B \-\-detect-bogus
 option.  The index remains unrecoverable, but future backups will not
 be broken by bad repo files.
 .SS "Restoring"
 To restore January the 31st's backup to a temporary directory:
 .PP
 .nf
-indexdir=/usb/indexes/2006-01-31/$(uname -n)
-mkdir -p /restore/home
-nhbackup --repo /usb --index $indexdir/home --root /restore/home --restore
+indexdir=/usb/indexes/2006-01-31/$(uname \-n)
+mkdir \-p /restore/home
+nhbackup \-\-repo /usb \-\-index $indexdir/home \-\-root /restore/home \-\-restore
 .fi
 .PP
 See below regarding cross-system and cross-platform restores.
@@ -264,7 +263,7 @@ delete all files in the repository not referenced by any current
 index:
 .PP
 .nf
-hbackup --repo /usb --cleanup /usb/indexes/*/*/* | xargs rm
+hbackup \-\-repo /usb \-\-cleanup /usb/indexes/*/*/* | xargs rm
 .fi
 .PP
 You may wish to manually inspect the list, rather than deleting the
@@ -274,15 +273,15 @@ concerns) inspect the contents of the files listed.
 .PP
 .B nhbackup
 has a
-.B --delete
+.B \-\-delete
 option allowing the above example to be written:
 .PP
 .nf
-nhbackup --repo /usb --delete --cleanup /usb/indexes/*/*/*
+nhbackup \-\-repo /usb \-\-delete \-\-cleanup /usb/indexes/*/*/*
 .fi
 .PP
 In addition you could add the
-.B --detect-bogus
+.B \-\-detect-bogus
 option to check the hash of every file in the repo.  (This is unlikely
 to be quick.)
 .SH "CROSS-SYSTEM RESTORES"
@@ -292,7 +291,7 @@ issues that can arise.
 .SS Permissions
 If the target system does not have the same user and group names as
 are encoded in the backup then the resore may fail.  You can use the
-.B --no-permissions
+.B \-\-no-permissions
 option to avoid setting permissions (users, groups and access bits)
 for this case.
 .PP
@@ -303,9 +302,9 @@ restore in some cases.)
 .SS "Filename Encoding"
 The target system may have a different filename encoding to that used
 in the backup.  The
-.B --from-encoding
+.B \-\-from-encoding
 and
-.B --to-encoding
+.B \-\-to-encoding
 options can be used to translate filenames.
 .PP
 For example a Windows system may have filenames encoded in CP1252, but
@@ -314,7 +313,7 @@ as the kernel will reject the invalid filenames.  In this case you
 would use the following options to translate the filenames:
 .PP
 .nf
-.B --from-encoding CP1252 --to-encoding char
+.B \-\-from-encoding CP1252 \-\-to-encoding char
 .fi
 .PP
 Currently index files do not contain any encoding information, so you
@@ -428,7 +427,7 @@ can access the repository either via the local filesystem or via SFTP.
 The requirements for SFTP to work are:
 .TP
 .B 1
-You have an SSH client that supports the \fB-s\fR option to access the
+You have an SSH client that supports the \fB\-s\fR option to access the
 remote SFTP server.  \fBhbackup\fR/\fBnhbackup\fR implement the SFTP
 protocol itself rather than using a local client, but they do not
 implement the
