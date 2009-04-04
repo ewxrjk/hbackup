@@ -1,0 +1,19 @@
+Source: hbackup
+Maintainer: Richard Kettlewell <rjk@greenend.org.uk>
+Section: admin
+Priority: extra
+Standards-Version: 3.8.1.0
+
+Package: hbackup
+Architecture: any
+Section: admin
+Priority: extra
+Depends: python,${shlibs:Depends}
+Description: Content-based backup system
+ hbackup is used to back up files to (for instance) a USB hard disk.
+ It stores each file under a name based on its hash, allowing
+ duplicate files to be stored only once and making all backups
+ automatically be incremental backups.
+ .
+ hbackup supports both locally attached disks and remote access via
+ SFTP.

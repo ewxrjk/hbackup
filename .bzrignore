@@ -22,3 +22,8 @@ config.status
 configure
 stamp-h1
 *.tar.gz
+debian/files
+debian/substvars.*
+debian/hbackup
+
+./changelog

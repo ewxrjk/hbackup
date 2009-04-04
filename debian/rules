@@ -1,0 +1,98 @@
+#! /usr/bin/make -f
+#
+# Copyright (C) 2009 Richard Kettlewell
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+# Options to configure.  This can be overridden by the caller if necessary.
+CONFIGURE=--prefix=/usr --mandir=/usr/share/man
+
+# Install commands.  You wouldn't normally override these.
+INSTALL=install
+INSTALL_DATA=$(INSTALL) -p -o root -g root -m 644
+INSTALL_PROGRAM=$(INSTALL) -p -o root -g root -m 755
+INSTALL_SCRIPT=$(INSTALL) -p -o root -g root -m 755
+MKDIR=mkdir -p -m 755
+
+# Set DEB_BUILD_OPTIONS=noopt to produce a non-optimized build.
+ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
+CFLAGS=-O0 -g
+else
+CFLAGS=-O2 -g
+endif
+export CFLAGS
+
+# Set DEB_BUILD_OPTIONS=nostrip to install debuggable executables.
+ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
+INSTALL_PROGRAM += -s
+endif
+
+# Set DEB_BUILD_OPTIONS=parallel=N to do make -jN
+ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+NUMJOBS = $(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+PARALLEL = -j$(NUMJOBS)
+endif
+
+export INSTALL_DATA
+export INSTALL_SCRIPT
+export INSTALL_PROGRAM
+
+FAKEROOT=fakeroot
+
+build:
+	@set -e;if test ! -f configure; then \
+	  echo ./prepare;\
+	  ./prepare;\
+	fi
+	@set -e;if test ! -f config.status; then \
+	  echo ./configure ${CONFIGURE} ${CONFIGURE_EXTRA};\
+	  ./configure ${CONFIGURE} ${CONFIGURE_EXTRA};\
+	else\
+	  echo ./config.status;\
+	  ./config.status;\
+	fi
+	$(MAKE) ${PARALLEL}
+
+pkg-hbackup: build
+	rm -rf debian/hbackup
+	$(MKDIR) debian/hbackup/DEBIAN
+	$(MKDIR) debian/hbackup/usr/share/doc/hbackup
+	$(INSTALL_DATA) debian/copyright CHANGES changelog \
+		debian/hbackup/usr/share/doc/hbackup/.
+	$(INSTALL_DATA) debian/changelog \
+		debian/hbackup/usr/share/doc/hbackup/changelog.Debian
+	gzip -9 debian/hbackup/usr/share/doc/hbackup/changelog*
+	$(MAKE) DESTDIR=`pwd`/debian/hbackup installdirs install
+	gzip -9f debian/hbackup/usr/share/man/man*/*
+	ln -s hbackup.1.gz debian/hbackup/usr/share/man/man1/nhbackup.1.gz
+	dpkg-shlibdeps -Tdebian/substvars.hbackup \
+		debian/hbackup/usr/bin/*
+	dpkg-gencontrol -isp -phbackup -Pdebian/hbackup -Tdebian/substvars.hbackup
+	chown -R root:root debian/hbackup
+	chmod -R g-ws debian/hbackup
+	dpkg --build debian/hbackup ..
+
+binary: binary-arch binary-indep
+binary-arch: pkg-hbackup
+binary-indep: 
+
+clean:
+	test -f Makefile && $(MAKE) distclean
+	rm -f config.cache
+	rm -f debian/files
+	rm -f debian/substvars.*
+	rm -rf debian/hbackup
+
+.PHONY: build clean pkg-hbackup binary binary-arch binary-indep
