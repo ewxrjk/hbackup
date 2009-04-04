@@ -1,6 +1,9 @@
-hbackup (0.DEV) unstable; urgency=low
+hbackup (0.2) unstable; urgency=low
 
-  * Debianized
+  * First Debianized release
+  * Index files are in normalized order to make diff work better
+  * --hint-file option to save on hashing
+  * Asynchronous repository checking
+  * More careful checking of files copied into repository
 
- -- Richard Kettlewell <rjk@greenend.org.uk>  Sat, 04 Apr 2009 10:32:45 +0100
-
+ -- Richard Kettlewell <rjk@greenend.org.uk>  Sat, 04 Apr 2009 11:12:07 +0100

@@ -15,9 +15,9 @@
 # 
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-AC_INIT([hbackup], [0.DEV], [richard+vcs@sfere.greenend.org.uk])
+AC_INIT([hbackup], [0.2], [richard+hbackup@sfere.greenend.org.uk])
 AC_CONFIG_AUX_DIR([config.aux])
-AM_INIT_AUTOMAKE([hbackup], [0.DEV])
+AM_INIT_AUTOMAKE([hbackup], [0.2])
 AC_CONFIG_SRCDIR([nhbackup.cc])
 AM_CONFIG_HEADER([config.h])
 AC_PROG_CXX
