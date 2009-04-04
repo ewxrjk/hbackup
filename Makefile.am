@@ -1,7 +1,9 @@
 bin_PROGRAMS=nhbackup
 dist_bin_SCRIPTS=hbackup
 dist_man_MANS=hbackup.1
-EXTRA_DIST=CHANGES prepare openssh.patch changelog
+EXTRA_DIST=CHANGES prepare openssh.patch changelog \
+	debian/changelog debian/control debian/copyright debian/rules \
+	scripts/dist scripts/setversion
 
 noinst_PROGRAMS=sha1test recodetest
 noinst_LIBRARIES=libhbackup.a
