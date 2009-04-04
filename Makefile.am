@@ -1,7 +1,7 @@
 bin_PROGRAMS=nhbackup
 dist_bin_SCRIPTS=hbackup
 dist_man_MANS=hbackup.1
-EXTRA_DIST=CHANGES prepare openssh.patch
+EXTRA_DIST=CHANGES prepare openssh.patch changelog
 
 noinst_PROGRAMS=sha1test recodetest
 noinst_LIBRARIES=libhbackup.a
@@ -34,3 +34,12 @@ check: all
 
 clean-local:
 	rm -rf ,test
+
+dist: changelog
+
+${srcdir}/changelog:
+	cd ${srcdir} && \
+	if bzr log > changelog.new; then mv changelog.new changelog;\
+	else rm -f changelog.new; fi
+
+.PHONY: changelog
