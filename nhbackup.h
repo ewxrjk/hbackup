@@ -36,6 +36,7 @@
 #include <stdarg.h>
 #include <iconv.h>
 #include <cstring>
+#include <climits>
 
 #ifndef _WIN32
 #include <sys/mman.h>
