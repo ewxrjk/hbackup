@@ -1,6 +1,9 @@
 hbackup
 =======
 
+ ** This program has been abandoned for a decade. No further **
+ ** development will happen here.                            **
+
 hbackup is a tool for efficiently backing up a UNIX filesystem to
 another filesystem (for instance on a removable hard disk).  It works
 on Linux and Mac OS X.
